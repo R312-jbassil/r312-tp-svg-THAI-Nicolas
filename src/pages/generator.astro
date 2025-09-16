@@ -45,6 +45,7 @@ import Layout from "../layouts/Layout.astro"
     <form class="w-full flex gap-2 max-w-6xl mx-auto mb-20 mt-20">
       <input id="user-prompt" type="text" class="input input-bordered flex-1 text-base w-full h-16" placeholder="Tapez un prompt à générer en SVG" />
       <button id="generate-button" type="button" class="btn btn-primary h-16 w-40">Generate</button>
+      <button id="save-button" type="button" class="btn btn-secondary h-16 w-32">Sauvegarder</button>
     </form>
   </div>
 </Layout>
@@ -71,9 +72,8 @@ import Layout from "../layouts/Layout.astro"
     }
   });
 
-  //@ts-nocheck
 	
-	async function generateSVG(prompt) {
+	async function generateSVG(prompt: string) {
 		console.log('Generating SVG for prompt:', prompt);
 		const res = await fetch('/api/generateSVG', {
 			method: 'POST',
@@ -82,6 +82,30 @@ import Layout from "../layouts/Layout.astro"
 		});
 		const data = await res.json();
 		return data.svg;
+	}
+
+	async function saveSVG() {
+		const svgOutput = document.getElementById('svg-output') as HTMLTextAreaElement;
+		const promptElement = document.getElementById('user-prompt') as HTMLInputElement;
+		
+		if (!svgOutput || !svgOutput.value.trim()) {
+			alert('Aucun SVG à sauvegarder !');
+			return;
+		}
+
+		const name = prompt('Donnez un nom à votre SVG :');
+		if (!name || !name.trim()) {
+			return;
+		}
+
+		try {
+			const { saveSVG } = await import('../../backend/pocketbase/pb.js');
+			await saveSVG(name.trim(), svgOutput.value, promptElement?.value || '');
+			alert('SVG sauvegardé avec succès !');
+		} catch (error) {
+			console.error('Erreur lors de la sauvegarde:', error);
+			alert('Erreur lors de la sauvegarde');
+		}
 	}
 
 	async function handleSubmit(event: Event) {
@@ -114,7 +138,13 @@ import Layout from "../layouts/Layout.astro"
         }
 	}
     const generateButton = document.getElementById("generate-button");
+    const saveButton = document.getElementById("save-button");
+    
 	if (generateButton) {
 		generateButton.addEventListener("click", handleSubmit);
+	}
+	
+	if (saveButton) {
+		saveButton.addEventListener("click", saveSVG);
 	}
 </script>

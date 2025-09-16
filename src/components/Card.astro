@@ -1,0 +1,75 @@
+---
+interface Props {
+  svg: {
+    id: string;
+    name: string;
+    code: string;
+    prompt?: string;
+  };
+}
+
+const { svg } = Astro.props;
+---
+
+<div class="card bg-white shadow-xl hover:shadow-2xl transition-shadow duration-300">
+  <div class="card-body p-4">
+    <h3 class="card-title text-lg font-semibold text-gray-800 mb-3 truncate" title={svg.name}>
+      {svg.name}
+    </h3>
+    
+    <div class="bg-gradient-to-br from-violet-50 to-purple-50 rounded-lg p-4 flex items-center justify-center h-48 overflow-hidden border border-violet-200">
+      <div class="max-w-full max-h-full flex items-center justify-center">
+        <div 
+          set:html={svg.code} 
+          class="svg-container"
+          style="max-width: 100%; max-height: 100%; width: auto; height: auto;"
+        />
+      </div>
+    </div>
+    
+    {svg.prompt && (
+      <p class="text-xs text-gray-500 mt-2 line-clamp-2" title={svg.prompt}>
+        <span class="font-medium">Prompt:</span> {svg.prompt}
+      </p>
+    )}
+    
+    <div class="card-actions justify-end mt-4 gap-2">
+      <button 
+        class="btn btn-primary btn-sm" 
+        onclick={`copySVGCode('${svg.id}', \`${svg.code.replace(/`/g, '\\`')}\`)`}
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+        </svg>
+        Copier
+      </button>
+      <button 
+        class="btn btn-error btn-sm" 
+        onclick={`deleteSVGItem('${svg.id}')`}
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+        </svg>
+        Supprimer
+      </button>
+    </div>
+  </div>
+</div>
+
+<style>
+  .svg-container :global(svg) {
+    max-width: 100% !important;
+    max-height: 100% !important;
+    width: auto !important;
+    height: auto !important;
+    display: block;
+    margin: 0 auto;
+  }
+  
+  .line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+</style>

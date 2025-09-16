@@ -1,0 +1,15 @@
+---
+const { pathname } = Astro.url
+---
+
+<div class="navbar bg-base-100 border-b">
+  <div class="flex-1">
+    <a class="btn btn-ghost text-xl">TP 3 SVG BASSIL JAD</a>
+  </div>
+  <div class="flex-none">
+    <div class="tabs tabs-boxed">
+      <a href="/" class={`tab ${pathname === '/' ? 'tab-active' : ''}`}>Accueil</a>
+      <a href="/generator" class={`tab ${pathname === '/generator' ? 'tab-active' : ''}`}>Générateur</a>
+    </div>
+  </div>
+</div>

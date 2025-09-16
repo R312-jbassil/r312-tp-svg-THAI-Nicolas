@@ -1,5 +1,8 @@
 import PocketBase from "pocketbase";
-export const pb = new PocketBase("http://127.0.0.1:8090");
+
+// Configuration dynamique de l'URL PocketBase
+const POCKETBASE_URL = import.meta.env.POCKETBASE_URL || "http://127.0.0.1:8090";
+export const pb = new PocketBase(POCKETBASE_URL);
 
 // Variable pour ma collection
 export const SVG_COLLECTION = "svgs";

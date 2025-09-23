@@ -91,24 +91,57 @@ import Layout from "../layouts/Layout.astro"
 		return data.svg || { content: '' };
 	}
 
+	// Fonction utilitaire pour sauvegarder le SVG avec ta structure existante
 	async function saveSVG() {
 		const svgOutput = document.getElementById('svg-output') as HTMLTextAreaElement;
-		const promptElement = document.getElementById('user-prompt') as HTMLInputElement;
 		
 		if (!svgOutput || !svgOutput.value.trim()) {
 			alert('Aucun SVG à sauvegarder !');
 			return;
 		}
 
-		const name = prompt('Donnez un nom à votre SVG :');
+		const name = prompt('Donnez un nom à votre création :');
 		if (!name || !name.trim()) {
 			return;
 		}
 
 		try {
-			const { saveSVG } = await import('../../backend/pocketbase/pb.js');
-			await saveSVG(name.trim(), svgOutput.value, promptElement?.value || '');
-			alert('SVG sauvegardé avec succès !');
+			// Limiter l'historique pour éviter la limite de 5000 caractères
+			const limitedPromptList = promptList.slice(-3); // Garder seulement les 3 derniers échanges
+			const promptText = JSON.stringify(limitedPromptList);
+			
+			// Vérifier la taille et tronquer si nécessaire
+			const maxPromptLength = 4500; // Marge de sécurité sous les 5000 caractères
+			const finalPrompt = promptText.length > maxPromptLength 
+				? promptText.substring(0, maxPromptLength) + '...]' 
+				: promptText;
+
+			// Préparation des données avec ta structure existante
+			const params = {
+				name: name.trim(), // Ton champ name
+				code: svgOutput.value, // Ton champ code
+				prompt: finalPrompt, // Historique limité
+			};
+
+			console.log("📤 Données à sauvegarder:", params);
+			console.log("📏 Taille du prompt:", params.prompt.length, "caractères");
+
+			// Envoi à l'endpoint API
+			const res = await fetch("/api/saveSVG", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify(params),
+			});
+			
+			const result = await res.json();
+			console.log("📥 Réponse du serveur:", result);
+			
+			if (result.success) {
+				alert("SVG sauvegardé avec succès !");
+			} else {
+				alert("Erreur lors de la sauvegarde : " + result.error);
+				console.error("Détails de l'erreur:", result.details);
+			}
 		} catch (error) {
 			console.error('Erreur lors de la sauvegarde:', error);
 			alert('Erreur lors de la sauvegarde');

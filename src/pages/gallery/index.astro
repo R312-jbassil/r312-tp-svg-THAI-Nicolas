@@ -1,0 +1,153 @@
+---
+import Layout from "../../layouts/Layout.astro"
+import Card from "../../components/Card.astro"
+import { getSVG } from "../../../backend/pocketbase/pb.js"
+
+let svgs: any[] = [];
+try {
+  const result = await getSVG();
+  svgs = result.svgs || [];
+} catch (error) {
+  console.error('Erreur lors du chargement:', error);
+}
+---
+
+<Layout>
+  <div class="min-h-screen bg-base-200 p-4">
+    <div class="max-w-6xl mx-auto">
+      <h1 class="text-3xl font-bold text-center mb-8">Galerie des SVGs</h1>
+      
+      <div id="svg-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        {svgs.length > 0 ? (
+          svgs.map((svg) => (
+            <Card svg={svg} />
+          ))
+        ) : (
+          <div class="text-center py-8 col-span-full">
+            <div class="flex flex-col items-center space-y-4">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+              </svg>
+              <div>
+                <p class="text-gray-600 text-lg font-medium">Aucun SVG trouvé</p>
+              </div>
+              <a href="/generator" class="btn btn-primary mt-4">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                Créer votre premier SVG
+              </a>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  </div>
+</Layout>
+
+<script>
+  // Fonction pour copier le code SVG
+  async function copySVGCode(id: string, code: string) {
+    try {
+      await navigator.clipboard.writeText(code);
+      alert('Code SVG copié dans le presse-papiers !');
+    } catch (error) {
+      console.error('Erreur lors de la copie:', error);
+      alert('Erreur lors de la copie');
+    }
+  }
+
+  // Fonction pour supprimer un SVG (Pour le frontend)
+  async function deleteSVGItem(id: string) {
+    if (confirm('Êtes-vous sûr de vouloir supprimer cette sauvegarde ?')) {
+      try {
+        const { deleteSVG } = await import('../../../backend/pocketbase/pb.js');
+        await deleteSVG(id);
+        location.reload();
+      } catch (error) {
+        console.error('Erreur lors de la suppression:', error);
+        alert('Erreur lors de la suppression');
+      }
+    }
+  }
+
+  // Exposer les fonctions globalement pour les onclick
+  (window as any).copySVGCode = copySVGCode;
+  (window as any).deleteSVGItem = deleteSVGItem;
+
+  // Fonction pour copier le code SVG (version avec attributs data)
+  async function copySVGCodeData(id: string, code: string) {
+    try {
+      await navigator.clipboard.writeText(code);
+      
+      // Feedback visuel
+      const button = document.querySelector(`[data-copy-id="${id}"]`);
+      if (button) {
+        const originalText = button.textContent;
+        button.textContent = 'Copié !';
+        button.classList.add('btn-success');
+        
+        setTimeout(() => {
+          button.textContent = originalText;
+          button.classList.remove('btn-success');
+        }, 2000);
+      }
+    } catch (err) {
+      console.error('Erreur lors de la copie:', err);
+      alert('Erreur lors de la copie du code');
+    }
+  }
+
+  // Fonction pour supprimer un SVG (version avec attributs data)
+  async function deleteSVGData(id: string) {
+    if (!confirm('Êtes-vous sûr de vouloir supprimer ce SVG ?')) {
+      return;
+    }
+
+    try {
+      const { deleteSVG } = await import('../../../backend/pocketbase/pb.js');
+      await deleteSVG(id);
+      
+      // Supprimer l'élément du DOM
+      const svgCard = document.querySelector(`[data-svg-id="${id}"]`);
+      if (svgCard) {
+        svgCard.remove();
+      }
+      
+      alert('SVG supprimé avec succès !');
+      
+      // Vérifier s'il reste des SVG
+      const remainingSVGs = document.querySelectorAll('[data-svg-id]');
+      if (remainingSVGs.length === 0) {
+        location.reload(); // Recharger pour afficher le message "Aucun SVG trouvé"
+      }
+    } catch (error) {
+      console.error('Erreur lors de la suppression:', error);
+      alert('Erreur lors de la suppression');
+    }
+  }
+
+  // Attacher les événements aux boutons (version data attributes)
+  document.addEventListener('DOMContentLoaded', () => {
+    // Boutons de copie
+    document.querySelectorAll('[data-copy-id]').forEach(button => {
+      button.addEventListener('click', () => {
+        const id = button.getAttribute('data-copy-id');
+        const code = button.getAttribute('data-copy-code');
+        if (id && code) {
+          copySVGCodeData(id, code);
+        }
+      });
+    });
+
+    // Boutons de suppression
+    document.querySelectorAll('[data-delete-id]').forEach(button => {
+      button.addEventListener('click', () => {
+        const id = button.getAttribute('data-delete-id');
+        if (id) {
+          deleteSVGData(id);
+        }
+      });
+    });
+  });
+</script>

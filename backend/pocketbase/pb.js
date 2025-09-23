@@ -1,13 +1,14 @@
 import PocketBase from "pocketbase";
 
 // Configuration dynamique de l'URL PocketBase
-const POCKETBASE_URL = import.meta.env.POCKETBASE_URL || "http://127.0.0.1:8090";
+const POCKETBASE_URL =
+  import.meta.env.POCKETBASE_URL || "http://127.0.0.1:8090";
 export const pb = new PocketBase(POCKETBASE_URL);
 
 // Variable pour ma collection
 export const SVG_COLLECTION = "svgs";
 
-// Fonction pour sauvegarder un SVG
+// Fonction pour sauvegarder un SVG avec ta structure existante
 export async function saveSVG(name, code, prompt = "") {
   try {
     if (!name || !code) {
@@ -16,8 +17,8 @@ export async function saveSVG(name, code, prompt = "") {
 
     const record = await pb.collection(SVG_COLLECTION).create({
       name: name,
-      code: code,
-      prompt: prompt,
+      code: code, // Ton champ existant
+      prompt: prompt, // Ton champ existant
       created: new Date().toISOString(),
     });
 

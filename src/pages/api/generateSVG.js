@@ -7,41 +7,45 @@ const NOM_MODEL = import.meta.env.NOM_MODEL;
 
 // Fonction exportée pour gérer les requêtes POST
 export const POST = async ({ request }) => {
-  console.log(request); // Affiche la requête dans la console pour le débogage
+  // Affiche la requête dans la console pour le débogage
+  console.log(request);
 
-  // Extraction du prompt du corps de la requête
-  const { prompt } = await request.json();
+  // Extraction des messages du corps de la requête
+  const messages = await request.json();
+
   // Initialisation du client OpenAI avec l'URL de base et le token d'API
   const client = new OpenAI({
-    baseURL: import.meta.env.OR_URL,
-    apiKey: OR_TOKEN,
+    baseURL: import.meta.env.OR_URL, // URL de l'API
+    apiKey: OR_TOKEN, // Token d'accès pour l'API
   });
 
-  // ................
+  // Création du message système pour guider le modèle
+  let SystemMessage = {
+    role: "system", // Rôle du message
+    content:
+      "You are an SVG code generator. Generate SVG code for the following messages. Make sure to include ids for each part of the generated SVG.", // Contenu du message
+  };
+
+  // Appel à l'API pour générer le code SVG en utilisant le modèle spécifié
   const chatCompletion = await client.chat.completions.create({
-    model: NOM_MODEL,
-    messages: [
-      {
-        role: "system",
-        content:
-          "You are an SVG code generator. Generate SVG code for the following prompt.",
-      },
-      {
-        role: "user",
-        content: prompt,
-      },
-    ],
+    model: NOM_MODEL, // Nom du modèle à utiliser
+    messages: [SystemMessage, ...messages], // Messages envoyés au modèle, incluant le message système et l'historique des messages
   });
-  // ...............
 
   // Récupération du message généré par l'API
-  const message = chatCompletion.choices[0].message.content || "";
-  console.log("message", message); // Affiche le message généré dans la console pour le débogage
+  const message = chatCompletion.choices[0].message || "";
+
+  // Affiche le message généré dans la console pour le débogage
+  console.log("Generated SVG:", message);
 
   // Recherche d'un élément SVG dans le message généré
-  const svgMatch = message.match(/<svg[\s\S]*?<\/svg>/i);
-  // Retourne une réponse JSON contenant le SVG ou une chaîne vide si aucun SVG n'est trouvé
-  return new Response(JSON.stringify({ svg: svgMatch ? svgMatch[0] : "" }), {
-    headers: { "Content-Type": "application/json" },
+  const svgMatch = message.content.match(/<svg[\s\S]*?<\/svg>/i);
+
+  // Si un SVG est trouvé, le remplace dans le message, sinon laisse une chaîne vide
+  message.content = svgMatch ? svgMatch[0] : "";
+
+  // Retourne une réponse JSON contenant le SVG généré
+  return new Response(JSON.stringify({ svg: message }), {
+    headers: { "Content-Type": "application/json" }, // Définit le type de contenu de la réponse
   });
 };

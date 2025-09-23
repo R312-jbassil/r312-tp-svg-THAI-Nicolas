@@ -180,4 +180,59 @@ import Layout from "../layouts/Layout.astro"
 	if (editButton) {
 		// editButton.addEventListener("click", handleEdit);
 	}
+
+  async function handleEdit() {
+    let prompt = "";
+    let aiResponse: any = "";
+    const promptElement = document.getElementById("user-prompt") as HTMLInputElement;
+    prompt = promptElement ? promptElement.value : "";
+    console.log("Prompt soumis : ", prompt);
+    
+    // Ajout du prompt de l'utilisateur à la liste
+    promptList.push({ role: "user", content: prompt });
+    
+    const svgContainer = document.getElementById("svg-container");
+    const generateButton = document.getElementById("generate-button") as HTMLButtonElement;
+    const editButton = document.getElementById("edit-button") as HTMLButtonElement;
+    
+    // Afficher un spinner de chargement
+    if (svgContainer) {
+        svgContainer.innerHTML = `<span class="loading loading-ring loading-xl"></span>`;
+    }
+    generateButton.disabled = true;
+    editButton.disabled = true;
+    
+    let svgOutput = document.getElementById("svg-output") as HTMLTextAreaElement;
+    
+    try {
+        // Appeler la fonction pour générer le SVG
+        aiResponse = await generateSVG(promptList);
+        
+        // Extraire le SVG de la réponse
+        const svgMatch = aiResponse.content ? aiResponse.content.match(/<svg[\s\S]*?<\/svg>/i) : null;
+        aiResponse.content = svgMatch ? svgMatch[0] : "";
+        console.log("Code SVG généré : ", aiResponse.content);
+        
+        // Ajouter la réponse de l'IA à la liste des prompts
+        promptList.push(aiResponse);
+        
+        // Afficher le SVG généré
+        if (svgOutput) svgOutput.value = aiResponse.content;
+        if (svgContainer) svgContainer.innerHTML = aiResponse.content;
+        
+        console.log("Historique des prompts : ", promptList);
+    } catch (error) {
+        console.error('Erreur lors de la génération:', error);
+    } finally {
+        // Réactiver les boutons
+        generateButton.disabled = false;
+        editButton.disabled = false;
+    }
+}
+
+if (editButton) {
+    editButton.addEventListener("click", handleEdit);
+}
+
+
 </script>

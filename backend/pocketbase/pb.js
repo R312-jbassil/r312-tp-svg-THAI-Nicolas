@@ -29,8 +29,32 @@ export async function saveSVG(name, code, prompt = "") {
   }
 }
 
-// Fonction pour récupérer tous les SVG ou un SVG avec son ID
-export async function getSVG(id = null) {
+// Fonction pour récupérer tous les SVG
+export async function getAllSVGs() {
+  try {
+    const records = await pb.collection(SVG_COLLECTION).getFullList({
+      sort: "-created",
+    });
+    return { svgs: records };
+  } catch (error) {
+    console.error("Erreur lors de la récupération:", error);
+    throw error;
+  }
+}
+
+// Fonction pour récupérer un SVG par ID
+export async function getSVGById(id) {
+  try {
+    const record = await pb.collection(SVG_COLLECTION).getOne(id);
+    return { svg: record };
+  } catch (error) {
+    console.error("Erreur lors de la récupération:", error);
+    throw error;
+  }
+}
+
+// Fonction pour récupérer tous les SVG ou un SVG avec son ID (ancienne fonction pour compatibilité)
+export async function getSVG(id) {
   try {
     if (id) {
       // Récupérer un SVG spécifique
@@ -45,6 +69,21 @@ export async function getSVG(id = null) {
     }
   } catch (error) {
     console.error("Erreur lors de la récupération:", error);
+    throw error;
+  }
+}
+
+// Fonction pour mettre à jour un SVG
+export async function updateSVG(id, updateData) {
+  try {
+    if (!id) {
+      throw new Error("ID requis");
+    }
+
+    const record = await pb.collection(SVG_COLLECTION).update(id, updateData);
+    return { success: true, id: record.id, data: record };
+  } catch (error) {
+    console.error("Erreur lors de la mise à jour:", error);
     throw error;
   }
 }

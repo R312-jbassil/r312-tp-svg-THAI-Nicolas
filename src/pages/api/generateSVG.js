@@ -2,7 +2,7 @@
 import { OpenAI } from "openai";
 
 // Récupération du token d'accès à partir des variables d'environnement
-const HF_TOKEN = import.meta.env.HF_TOKEN;
+const OR_TOKEN = import.meta.env.OR_TOKEN;
 const NOM_MODEL = import.meta.env.NOM_MODEL;
 
 // Fonction exportée pour gérer les requêtes POST
@@ -13,8 +13,8 @@ export const POST = async ({ request }) => {
   const { prompt } = await request.json();
   // Initialisation du client OpenAI avec l'URL de base et le token d'API
   const client = new OpenAI({
-    baseURL: import.meta.env.HF_URL,
-    apiKey: HF_TOKEN,
+    baseURL: import.meta.env.OR_URL,
+    apiKey: OR_TOKEN,
   });
 
   // ................

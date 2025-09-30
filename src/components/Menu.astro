@@ -1,16 +1,36 @@
 ---
-const { pathname } = Astro.url
+import { ui } from "../i18n/ui.js";
+
+const locale = Astro.locals.lang ?? 'en';
+const { pathname } = Astro.url;
 ---
 
 <div class="navbar bg-base-100 border-b">
   <div class="flex-1">
     <a class="btn btn-ghost text-xl">TP 3 SVG BASSIL JAD</a>
   </div>
+  
+  <div class="flex-none mx-4">
+    <form method="POST" action={Astro.url.pathname}>
+      <select name="language" class="select select-sm" onchange="this.form.submit()">
+        <option disabled selected="true">{ui[locale].nav.language}</option>
+        <option value="en">English</option>
+        <option value="fr">Français</option>
+      </select>
+    </form>
+  </div>
+  
   <div class="flex-none">
     <div class="tabs tabs-boxed">
-      <a href="/" class={`tab ${pathname === '/' ? 'tab-active' : ''}`}>Accueil</a>
-      <a href="/generator" class={`tab ${pathname === '/generator' ? 'tab-active' : ''}`}>Générateur</a>
-      <a href="/gallery" class={`tab ${pathname === '/gallery' ? 'tab-active' : ''}`}>Galerie</a>
+      <a href="/" class={`tab ${pathname === '/' ? 'tab-active' : ''}`}>
+        {ui[locale].nav.home}
+      </a>
+      <a href="/generator" class={`tab ${pathname === '/generator' ? 'tab-active' : ''}`}>
+        {ui[locale].nav.generator}
+      </a>
+      <a href="/gallery" class={`tab ${pathname === '/gallery' ? 'tab-active' : ''}`}>
+        {ui[locale].nav.gallery}
+      </a>
     </div>
   </div>
 </div>

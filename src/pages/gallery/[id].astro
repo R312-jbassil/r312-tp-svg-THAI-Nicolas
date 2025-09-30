@@ -1,7 +1,9 @@
 ---
 import Layout from "../../layouts/Layout.astro";
 import { getSVGById } from "../../../backend/pocketbase/pb.js";
+import { ui } from "../../i18n/ui.js";
 
+const locale = Astro.locals.lang ?? 'en';
 const id = Astro.params.id;
 let svg = null;
 let error = null;
@@ -52,7 +54,7 @@ if (!svg) {
     <!-- Section Chat -->
     <div class="w-1/2 flex flex-col bg-white m-4 rounded-lg shadow-xl h-[calc(100vh-2rem)]">
       <div class="p-4 border-b flex-shrink-0">
-        <h3 class="text-lg font-semibold">Conversation</h3>
+        <h3 class="text-lg font-semibold">{ui[locale].gallery.conversation}</h3>
       </div>
       
       <!-- Chat History avec scroll interne -->
@@ -68,7 +70,7 @@ if (!svg) {
               </div>
             ))
           ) : (
-            <span class="text-error">Aucun historique de chat.</span>
+            <span class="text-error">{ui[locale].gallery.noHistory}</span>
           )
         }
       </div>
@@ -78,16 +80,23 @@ if (!svg) {
         <input type="hidden" name="history" value={JSON.stringify(svg?.chat_history)} />
         <input type="hidden" name="id" value={svg?.id} />
         <div class="flex items-center gap-2">
-          <input id="prompt-input" name="editPrompt" type="text" class="input flex-grow" placeholder="Tapez un prompt pour modifier le SVG..." />
-          <button class="btn btn-primary" type="submit">Edit</button>
+          <input id="prompt-input" name="editPrompt" type="text" class="input flex-grow" placeholder={ui[locale].gallery.modifyPlaceholder} />
+          <button class="btn btn-primary" type="submit">{ui[locale].gallery.modifyButton}</button>
         </div>
       </form>
     </div>
   </div>
 </Layout>
 
+<!-- Passer les traductions au script -->
+<script type="application/json" id="gallery-translations" set:html={JSON.stringify(ui[locale].gallery)}></script>
+
 <script>
   //@ts-nocheck
+  // Récupérer les traductions
+  const translationsElement = document.getElementById('gallery-translations');
+  const t = translationsElement ? JSON.parse(translationsElement.textContent || '{}') : {};
+
   const form = document.getElementById('input-prompt-form');
   const svgPreview = document.getElementById('svg-preview');
   const chatHistory = document.getElementById('chat-history');
@@ -145,7 +154,7 @@ if (!svg) {
     // Créez un objet pour le prompt de l'utilisateur
     const promptText = formData.get('editPrompt');
     if (!promptText || !promptText.trim()) {
-      alert('Veuillez entrer un prompt');
+      alert(t.enterPrompt || 'Veuillez entrer un prompt');
       return;
     }
 
@@ -236,7 +245,7 @@ if (!svg) {
         document.querySelector('input[name="history"]').value = JSON.stringify(history);
       } else {
         console.error("Erreur lors de la mise à jour:", data.error);
-        alert("Erreur lors de la sauvegarde : " + data.error);
+        alert((t.saveError || "Erreur lors de la sauvegarde") + " : " + data.error);
       }
 
     } catch (error) {
@@ -252,13 +261,13 @@ if (!svg) {
       chatHistory.innerHTML += `
         <div class="chat chat-end">
           <div class="chat-bubble bg-error text-error-content">
-            <pre class="whitespace-pre-wrap text-sm">Erreur: ${error.message || 'Erreur inconnue lors de la génération du SVG'}</pre>
+            <pre class="whitespace-pre-wrap text-sm">Erreur: ${error.message || (t.generationError || 'Erreur inconnue lors de la génération du SVG')}</pre>
           </div>
           <div class="chat-footer opacity-60 text-xs mt-1">system</div>
         </div>
       `;
       
-      alert('Erreur lors de la génération du SVG: ' + (error.message || 'Erreur inconnue'));
+      alert((t.generationError || 'Erreur lors de la génération du SVG') + ': ' + (error.message || 'Erreur inconnue'));
     }
 
     // Scroll vers le bas

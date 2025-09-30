@@ -1,5 +1,8 @@
 ---
-import Layout from "../layouts/Layout.astro"
+import Layout from "../layouts/Layout.astro";
+import { ui } from "../i18n/ui.js";
+
+const locale = Astro.locals.lang ?? 'en';
 ---
 
 <Layout>
@@ -43,10 +46,10 @@ import Layout from "../layouts/Layout.astro"
     </div>
     
     <form class="w-full flex gap-2 max-w-6xl mx-auto mb-20 mt-20">
-      <input id="user-prompt" type="text" class="input input-bordered flex-1 text-base w-full h-16" placeholder="Tapez un prompt à générer en SVG" />
-      <button id="generate-button" type="button" class="btn btn-primary h-16 w-40">Generate</button>
-      <button id="save-button" type="button" class="btn btn-secondary h-16 w-32">Sauvegarder</button>
-      <button class="btn btn-neutral mt-2 h-12 w-24" id="edit-button">Edit</button>
+      <input id="user-prompt" type="text" class="input input-bordered flex-1 text-base w-full h-16" placeholder={ui[locale].generator.promptPlaceholder} />
+      <button id="generate-button" type="button" class="btn btn-primary h-16 w-40">{ui[locale].generator.generateButton}</button>
+      <button id="save-button" type="button" class="btn btn-secondary h-16 w-32">{ui[locale].generator.saveButton}</button>
+      <button class="btn btn-neutral mt-2 h-12 w-24" id="edit-button">{ui[locale].generator.editButton}</button>
     </form>
   </div>
 </Layout>
@@ -177,20 +180,54 @@ import Layout from "../layouts/Layout.astro"
         try {
             // Appeler la fonction pour générer le SVG
             aiResponse = await generateSVG(promptList);
+            console.log("Réponse AI complète:", aiResponse);
             
-            // Extraire le SVG de la réponse
-            const svgMatch = aiResponse.content ? aiResponse.content.match(/<svg[\s\S]*?<\/svg>/i) : null;
-            aiResponse.content = svgMatch ? svgMatch[0] : "";
-            console.log("svgCode: ", aiResponse.content);
+            // Extraire le SVG de la réponse - gérer plusieurs formats possibles
+            let svgCode = "";
+            let fullResponse = "";
             
-            // Ajouter la réponse de l'IA à la liste des prompts
-            promptList.push(aiResponse);
+            if (aiResponse.content) {
+                fullResponse = aiResponse.content;
+            } else if (typeof aiResponse === 'string') {
+                fullResponse = aiResponse;
+            } else if (aiResponse.message && aiResponse.message.content) {
+                fullResponse = aiResponse.message.content;
+            }
+            
+            console.log("Contenu à analyser:", fullResponse);
+            
+            // Nettoyer le contenu des backticks markdown s'il y en a
+            const cleanContent = fullResponse.replace(/```svg\n?/g, '').replace(/```\n?/g, '');
+            
+            // Extraire le SVG
+            const svgMatch = cleanContent.match(/<svg[\s\S]*?<\/svg>/i);
+            svgCode = svgMatch ? svgMatch[0] : "";
+            
+            console.log("SVG extrait:", svgCode);
+            
+            // Créer l'objet de réponse pour l'historique
+            const responseObject = { role: "assistant", content: fullResponse };
+            promptList.push(responseObject);
             
             // Afficher le SVG généré
-            if (svgOutput) svgOutput.value = aiResponse.content;
-            if (svgContainer) svgContainer.innerHTML = aiResponse.content;
+            if (svgOutput && svgCode) {
+                svgOutput.value = svgCode;
+            }
+            if (svgContainer && svgCode) {
+                svgContainer.innerHTML = svgCode;
+            }
+            
+            if (!svgCode) {
+                console.warn("Aucun SVG trouvé dans la réponse");
+                if (svgContainer) {
+                    svgContainer.innerHTML = '<div class="text-red-500 p-4">Erreur: Aucun SVG généré</div>';
+                }
+            }
         } catch (error) {
             console.error('Erreur lors de la génération:', error);
+            if (svgContainer) {
+                svgContainer.innerHTML = '<div class="text-red-500 p-4">Erreur lors de la génération</div>';
+            }
         } finally {
             // Réactiver les boutons
             generateButton.disabled = false;
@@ -240,22 +277,56 @@ import Layout from "../layouts/Layout.astro"
     try {
         // Appeler la fonction pour générer le SVG
         aiResponse = await generateSVG(promptList);
+        console.log("Réponse AI complète:", aiResponse);
         
-        // Extraire le SVG de la réponse
-        const svgMatch = aiResponse.content ? aiResponse.content.match(/<svg[\s\S]*?<\/svg>/i) : null;
-        aiResponse.content = svgMatch ? svgMatch[0] : "";
-        console.log("Code SVG généré : ", aiResponse.content);
+        // Extraire le SVG de la réponse - gérer plusieurs formats possibles
+        let svgCode = "";
+        let fullResponse = "";
         
-        // Ajouter la réponse de l'IA à la liste des prompts
-        promptList.push(aiResponse);
+        if (aiResponse.content) {
+            fullResponse = aiResponse.content;
+        } else if (typeof aiResponse === 'string') {
+            fullResponse = aiResponse;
+        } else if (aiResponse.message && aiResponse.message.content) {
+            fullResponse = aiResponse.message.content;
+        }
+        
+        console.log("Contenu à analyser:", fullResponse);
+        
+        // Nettoyer le contenu des backticks markdown s'il y en a
+        const cleanContent = fullResponse.replace(/```svg\n?/g, '').replace(/```\n?/g, '');
+        
+        // Extraire le SVG
+        const svgMatch = cleanContent.match(/<svg[\s\S]*?<\/svg>/i);
+        svgCode = svgMatch ? svgMatch[0] : "";
+        
+        console.log("SVG extrait:", svgCode);
+        
+        // Créer l'objet de réponse pour l'historique
+        const responseObject = { role: "assistant", content: fullResponse };
+        promptList.push(responseObject);
         
         // Afficher le SVG généré
-        if (svgOutput) svgOutput.value = aiResponse.content;
-        if (svgContainer) svgContainer.innerHTML = aiResponse.content;
+        if (svgOutput && svgCode) {
+            svgOutput.value = svgCode;
+        }
+        if (svgContainer && svgCode) {
+            svgContainer.innerHTML = svgCode;
+        }
+        
+        if (!svgCode) {
+            console.warn("Aucun SVG trouvé dans la réponse");
+            if (svgContainer) {
+                svgContainer.innerHTML = '<div class="text-red-500 p-4">Erreur: Aucun SVG généré</div>';
+            }
+        }
         
         console.log("Historique des prompts : ", promptList);
     } catch (error) {
         console.error('Erreur lors de la génération:', error);
+        if (svgContainer) {
+            svgContainer.innerHTML = '<div class="text-red-500 p-4">Erreur lors de la génération</div>';
+        }
     } finally {
         // Réactiver les boutons
         generateButton.disabled = false;

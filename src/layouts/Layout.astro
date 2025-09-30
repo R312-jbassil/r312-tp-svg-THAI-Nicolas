@@ -1,6 +1,10 @@
 ---
 import "../styles/global.css";
 import Menu from "../components/Menu.astro";
+import { ui } from "../i18n/ui.js";
+
+// Langue par défaut
+const locale = "fr";
 ---
 <!doctype html>
 <html lang="en" data-theme="light" class="h-full">
@@ -15,6 +19,7 @@ import Menu from "../components/Menu.astro";
 		<div class="h-full flex flex-col min-h-0">
 			<div class="flex-1 min-h-0">
 				<header>
+					
 		  <Menu />										
 				</header>
 				<slot />

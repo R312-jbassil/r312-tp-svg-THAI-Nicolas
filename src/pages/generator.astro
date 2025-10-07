@@ -3,6 +3,7 @@ import Layout from "../layouts/Layout.astro";
 import { ui } from "../i18n/ui.js";
 
 const locale = Astro.locals.lang ?? 'en';
+const user = Astro.locals.user;
 ---
 
 <Layout>
@@ -103,6 +104,19 @@ const locale = Astro.locals.lang ?? 'en';
 			return;
 		}
 
+		// Récupérer les informations de l'utilisateur depuis le localStorage
+		const userString = localStorage.getItem("user");
+		if (!userString) {
+			alert('Vous devez être connecté pour sauvegarder un SVG !');
+			return;
+		}
+		
+		const user = JSON.parse(userString);
+		if (!user || !user.id) {
+			alert('Informations utilisateur invalides. Veuillez vous reconnecter.');
+			return;
+		}
+
 		const name = prompt('Donnez un nom à votre création :');
 		if (!name || !name.trim()) {
 			return;
@@ -119,15 +133,17 @@ const locale = Astro.locals.lang ?? 'en';
 				? promptText.substring(0, maxPromptLength) + '...]' 
 				: promptText;
 
-			// Préparation des données avec ta structure existante
+			// Préparation des données avec ta structure existante + l'ID utilisateur
 			const params = {
 				name: name.trim(), // Ton champ name
 				code: svgOutput.value, // Ton champ code
 				prompt: finalPrompt, // Historique limité
+				user: user.id, // ID de l'utilisateur connecté
 			};
 
 			console.log("📤 Données à sauvegarder:", params);
 			console.log("📏 Taille du prompt:", params.prompt.length, "caractères");
+			console.log("👤 Utilisateur:", user.id);
 
 			// Envoi à l'endpoint API
 			const res = await fetch("/api/saveSVG", {

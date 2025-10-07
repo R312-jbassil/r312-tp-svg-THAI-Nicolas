@@ -12,6 +12,24 @@ interface Props {
 }
 
 const { svg, locale = 'en' } = Astro.props;
+
+// Extraire le vrai prompt (premier message de l'utilisateur)
+let displayPrompt = '';
+if (svg.prompt) {
+  try {
+    const history = JSON.parse(svg.prompt);
+    if (Array.isArray(history) && history.length > 0) {
+      // Trouver le premier message de l'utilisateur
+      const firstUserMessage = history.find((msg: any) => msg.role === 'user');
+      displayPrompt = firstUserMessage?.content || svg.prompt;
+    } else {
+      displayPrompt = svg.prompt;
+    }
+  } catch (e) {
+    // Si ce n'est pas du JSON, utiliser le prompt tel quel
+    displayPrompt = svg.prompt;
+  }
+}
 ---
 
 <div class="card bg-white shadow-xl hover:shadow-2xl transition-shadow duration-300">
@@ -30,9 +48,9 @@ const { svg, locale = 'en' } = Astro.props;
       </div>
     </div>
     
-    {svg.prompt && (
-      <p class="text-xs text-gray-500 mt-2 line-clamp-2" title={svg.prompt}>
-        <span class="font-medium">Prompt:</span> {svg.prompt}
+    {displayPrompt && (
+      <p class="text-xs text-gray-500 mt-2 line-clamp-2" title={displayPrompt}>
+        <span class="font-medium">Prompt:</span> {displayPrompt}
       </p>
     )}
     

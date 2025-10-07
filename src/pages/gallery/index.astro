@@ -1,17 +1,31 @@
 ---
 import Layout from "../../layouts/Layout.astro";
 import Card from "../../components/Card.astro";
-import { getSVG } from "../../../backend/pocketbase/pb.js";
+import pb from "../../utils/pb.js";
+import { Collections } from "../../utils/pocketbase-types.js";
 import { ui } from "../../i18n/ui.js";
 
 const locale = Astro.locals.lang ?? 'en';
+const user = Astro.locals.user; // Récupère l'utilisateur connecté
 
 let svgs: any[] = [];
-try {
-  const result = await getSVG();
-  svgs = result.svgs || [];
-} catch (error) {
-  console.error('Erreur lors du chargement:', error);
+
+// Vérifier si l'utilisateur est connecté
+if (user && user.id) {
+  try {
+    // Récupérer uniquement les SVGs de l'utilisateur connecté
+    svgs = await pb
+      .collection(Collections.Svg)
+      .getFullList({
+        sort: "-created", // Trie les SVGs du plus récent au plus ancien
+        filter: `user = "${user.id}"`, // Filtre pour n'afficher que les SVGs de l'utilisateur
+      });
+    console.log(`✅ ${svgs.length} SVG(s) trouvé(s) pour l'utilisateur ${user.id}`);
+  } catch (error) {
+    console.error('Erreur lors du chargement des SVGs:', error);
+  }
+} else {
+  console.log('⚠️ Aucun utilisateur connecté');
 }
 ---
 

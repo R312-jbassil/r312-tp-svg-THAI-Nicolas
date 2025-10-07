@@ -1,10 +1,12 @@
 ---
 import Layout from "../../layouts/Layout.astro";
-import { getSVGById } from "../../../backend/pocketbase/pb.js";
+import pb from "../../utils/pb.js";
+import { Collections } from "../../utils/pocketbase-types.js";
 import { ui } from "../../i18n/ui.js";
 
 const locale = Astro.locals.lang ?? 'en';
 const id = Astro.params.id;
+const user = Astro.locals.user;
 let svg = null;
 let error = null;
 
@@ -13,8 +15,14 @@ if (!id) {
 }
 
 try {
-  const result = await getSVGById(id);
-  svg = result.svg;
+  // Récupérer le SVG par son ID
+  svg = await pb.collection(Collections.Svg).getOne(id);
+  
+  // Vérifier que le SVG appartient bien à l'utilisateur connecté
+  if (user && svg.user !== user.id) {
+    console.warn(`⚠️ L'utilisateur ${user.id} tente d'accéder au SVG ${id} qui appartient à ${svg.user}`);
+    return Astro.redirect('/gallery');
+  }
   
   // Parse l'historique des prompts depuis ta structure existante
   if (svg?.prompt) {
@@ -27,6 +35,8 @@ try {
   } else if (svg) {
     svg.chat_history = [];
   }
+  
+  console.log(`✅ SVG ${id} chargé pour l'utilisateur ${user?.id}`);
 } catch (e) {
   error = "SVG non trouvé";
   console.error("Erreur lors de la récupération du SVG:", e);
@@ -62,11 +72,11 @@ if (!svg) {
         {
           (Array.isArray(svg?.chat_history) && svg.chat_history.length > 0) ? (
             svg.chat_history.map((msg: { role: string; content: string; }) => (
-              <div class={`chat ${msg.role === 'user' ? 'chat-start' : 'chat-end'}`}>
-                <div class={`chat-bubble ${msg.role === 'user' ? 'bg-primary text-primary-content' : 'bg-secondary text-secondary-content'}`}>
+              <div class={`chat ${msg.role === 'user' ? 'chat-end' : 'chat-start'}`}>
+                <div class={`chat-bubble ${msg.role === 'user' ? 'chat-bubble-primary' : 'chat-bubble-secondary'}`}>
                   <pre class="whitespace-pre-wrap text-sm">{msg.content}</pre>
                 </div>
-                <div class="chat-footer opacity-60 text-xs mt-1">{msg.role}</div>
+                <div class="chat-footer opacity-60 text-xs mt-1">{msg.role === 'user' ? 'Vous' : 'Assistant'}</div>
               </div>
             ))
           ) : (
@@ -173,23 +183,23 @@ if (!svg) {
     // Affichez un indicateur de chargement
     const loadingSpinner = `<div class="flex items-center justify-center"><span class="loading loading-ring loading-xl"></span></div>`;
     
-    // Ajoutez le prompt à l'historique du chat
+    // Ajoutez le prompt à l'historique du chat (utilisateur à droite)
     chatHistory.innerHTML += `
-      <div class="chat chat-start">
-        <div class="chat-bubble bg-primary text-primary-content">
+      <div class="chat chat-end">
+        <div class="chat-bubble chat-bubble-primary">
           <pre class="whitespace-pre-wrap text-sm">${prompt.content}</pre>
         </div>
-        <div class="chat-footer opacity-60 text-xs mt-1">user</div>
+        <div class="chat-footer opacity-60 text-xs mt-1">Vous</div>
       </div>
     `;
 
-    // Ajouter l'indicateur de chargement
+    // Ajouter l'indicateur de chargement (assistant à gauche)
     chatHistory.innerHTML += `
-      <div class="chat chat-end" id="loading-message">
-        <div class="chat-bubble bg-secondary text-secondary-content">
+      <div class="chat chat-start" id="loading-message">
+        <div class="chat-bubble chat-bubble-secondary">
           ${loadingSpinner}
         </div>
-        <div class="chat-footer opacity-60 text-xs mt-1">assistant</div>
+        <div class="chat-footer opacity-60 text-xs mt-1">Assistant</div>
       </div>
     `;
 
@@ -220,13 +230,13 @@ if (!svg) {
         svgPreview.innerHTML = `<div class="max-w-full max-h-full">${svgCode}</div>`;
       }
 
-      // Ajoutez le code SVG à l'historique du chat
+      // Ajoutez le code SVG à l'historique du chat (assistant à gauche)
       chatHistory.innerHTML += `
-        <div class="chat chat-end">
-          <div class="chat-bubble bg-secondary text-secondary-content">
+        <div class="chat chat-start">
+          <div class="chat-bubble chat-bubble-secondary">
             <pre class="whitespace-pre-wrap text-sm">${aiResponse}</pre>
           </div>
-          <div class="chat-footer opacity-60 text-xs mt-1">assistant</div>
+          <div class="chat-footer opacity-60 text-xs mt-1">Assistant</div>
         </div>
       `;
 
@@ -257,24 +267,22 @@ if (!svg) {
         loadingElement.remove();
       }
       
-      // Afficher un message d'erreur plus détaillé dans le chat
+   
       chatHistory.innerHTML += `
-        <div class="chat chat-end">
+        <div class="chat chat-start">
           <div class="chat-bubble bg-error text-error-content">
             <pre class="whitespace-pre-wrap text-sm">Erreur: ${error.message || (t.generationError || 'Erreur inconnue lors de la génération du SVG')}</pre>
           </div>
-          <div class="chat-footer opacity-60 text-xs mt-1">system</div>
+          <div class="chat-footer opacity-60 text-xs mt-1">Système</div>
         </div>
       `;
       
       alert((t.generationError || 'Erreur lors de la génération du SVG') + ': ' + (error.message || 'Erreur inconnue'));
     }
 
-    // Scroll vers le bas
     chatHistory.scrollTop = chatHistory.scrollHeight;
     form.reset(); // Réinitialisez le formulaire
     
-    // Remettre les valeurs hidden
     document.querySelector('input[name="history"]').value = JSON.stringify(history);
     document.querySelector('input[name="id"]').value = formData.get("id");
   });

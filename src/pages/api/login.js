@@ -3,8 +3,10 @@ import { Collections } from "../../utils/pocketbase-types";
 
 export const POST = async ({ request, cookies }) => {
   // Créer une nouvelle instance PocketBase pour chaque requête
-  const pb = new PocketBase(import.meta.env.POCKETBASE_URL || "http://127.0.0.1:8090");
-  
+  const pb = new PocketBase(
+    import.meta.env.POCKETBASE_URL || "http://127.0.0.1:8090"
+  );
+
   // Récupère l'email et le mot de passe envoyés dans la requête
   const { email, password } = await request.json();
   try {

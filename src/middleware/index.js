@@ -7,7 +7,7 @@ const pb = new PocketBase(
 export const onRequest = async (context, next) => {
   // IMPORTANT : Nettoyer l'authStore au début de chaque requête pour éviter les conflits
   pb.authStore.clear();
-  
+
   // Vérifie la présence du cookie d'authentification
   const cookie = context.cookies.get("pb_auth")?.value;
   if (cookie) {

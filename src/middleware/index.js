@@ -1,10 +1,35 @@
+import PocketBase from "pocketbase";
+
+const pb = new PocketBase(
+  import.meta.env.POCKETBASE_URL || "http://127.0.0.1:8090"
+);
+
 export const onRequest = async (context, next) => {
-  // Cette fonction middleware s'exécute à chaque requête.
-  // context = infos de la requête (URL, cookies, méthode...)
-  // next() = continue le traitement normal (afficher la page demandée)
-  if (context.url.pathname.startsWith("/api/")) {
-    return next();
+  // IMPORTANT : Nettoyer l'authStore au début de chaque requête pour éviter les conflits
+  pb.authStore.clear();
+  
+  // Vérifie la présence du cookie d'authentification
+  const cookie = context.cookies.get("pb_auth")?.value;
+  if (cookie) {
+    pb.authStore.loadFromCookie(cookie); // Charge les infos d'auth depuis le cookie
+    if (pb.authStore.isValid) {
+      // Si le token est valide, ajoute les données utilisateur dans Astro.locals
+      context.locals.user = pb.authStore.record;
+    }
   }
+
+  // Pour les routes API, on exige l'authentification sauf pour /api/login
+  if (context.url.pathname.startsWith("/api/")) {
+    if (!context.locals.user && context.url.pathname !== "/api/login") {
+      // Si l'utilisateur n'est pas connecté, on retourne une erreur 401 (non autorisé)
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+      });
+    }
+    return next(); // Continue le traitement normal
+  }
+
+  // ... middleware pour l'i18n
   // Si la requête est un POST (soumission du formulaire de langue) :
   if (context.request.method === "POST") {
     // Lire les données du formulaire

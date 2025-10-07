@@ -1,6 +1,7 @@
 // Collections définies dans PocketBase
 export const Collections = {
   Svg: "svgs", // Ta collection existante
+  Users: "users", // Collection des utilisateurs
 };
 
 // Types pour les réponses PocketBase (version simplifiée sans TypeScript)

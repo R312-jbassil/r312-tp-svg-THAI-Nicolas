@@ -54,6 +54,20 @@ export const ui = {
       title: "Welcome to SVG Generator",
       description: "Create and render SVGs from prompts.",
       button: "Go to SVG Generator",
+      features: {
+        aiPowered: {
+          title: "AI Powered",
+          description: "Generate SVGs from text prompts using AI",
+        },
+        realTimeEdit: {
+          title: "Real-time Edit",
+          description: "Modify your SVGs with conversational AI",
+        },
+        saveExport: {
+          title: "Save & Export",
+          description: "Save your creations and export as SVG",
+        },
+      },
     },
     generator: {
       title: "SVG Generator",
@@ -143,6 +157,20 @@ export const ui = {
       title: "Bienvenue sur le générateur SVG",
       description: "Créez et affichez des SVG à partir d'invites.",
       button: "Aller au générateur SVG",
+      features: {
+        aiPowered: {
+          title: "IA Intelligente",
+          description: "Générez des SVG à partir de texte grâce à l'IA",
+        },
+        realTimeEdit: {
+          title: "Édition en Temps Réel",
+          description: "Modifiez vos SVG avec l'IA conversationnelle",
+        },
+        saveExport: {
+          title: "Sauvegarde & Export",
+          description: "Sauvegardez vos créations et exportez en SVG",
+        },
+      },
     },
     generator: {
       title: "Générateur SVG",

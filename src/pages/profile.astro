@@ -1,0 +1,312 @@
+---
+import Layout from "../layouts/Layout.astro";
+import { ui } from "../i18n/ui.js";
+import PocketBase from "pocketbase";
+
+const locale = Astro.locals.lang as 'en' | 'fr' ?? 'en';
+const user = Astro.locals.user;
+
+// Rediriger si non connecté
+if (!user) {
+  return Astro.redirect("/login");
+}
+
+// Récupérer le nombre de SVG créés par l'utilisateur
+const pb = new PocketBase(import.meta.env.POCKETBASE_URL || "http://127.0.0.1:8090");
+let svgCount = 0;
+try {
+  const svgs = await pb.collection("svgs").getList(1, 1, {
+    filter: `user = "${user.id}"`,
+  });
+  svgCount = svgs.totalItems;
+} catch (error) {
+  console.error("Error fetching SVG count:", error);
+}
+
+const avatarUrl = user.avatar 
+  ? `${import.meta.env.POCKETBASE_URL}/api/files/users/${user.id}/${user.avatar}`
+  : null;
+---
+
+<Layout>
+  <div class="min-h-screen bg-base-200 py-8 px-4">
+    <div class="max-w-4xl mx-auto">
+      <!-- Header -->
+      <div class="mb-8">
+        <h1 class="text-4xl font-bold mb-2">{ui[locale].profile.title}</h1>
+        <p class="text-base-content/70">{ui[locale].profile.subtitle}</p>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Sidebar: Avatar & Stats -->
+        <div class="lg:col-span-1 space-y-6">
+          <!-- Avatar Card -->
+          <div class="card bg-base-100 shadow-md">
+            <div class="card-body items-center text-center">
+              <div class="avatar mb-4">
+                <div class="w-32 rounded-full ring ring-primary ring-offset-base-100 ring-offset-4">
+                  {avatarUrl ? (
+                    <img src={avatarUrl} alt={user.username || 'User'} id="avatar-preview" />
+                  ) : (
+                    <div class="w-full h-full bg-primary flex items-center justify-center text-primary-content text-4xl font-bold" id="avatar-preview">
+                      {(user.username || user.email || 'U').charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              <h2 class="card-title text-xl">{user.username || user.email}</h2>
+              
+              <div class="w-full mt-4">
+                <label for="avatar-upload" class="btn btn-outline btn-sm btn-block gap-2 cursor-pointer">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  {ui[locale].profile.uploadAvatar}
+                </label>
+                <input 
+                  type="file" 
+                  id="avatar-upload" 
+                  accept="image/*" 
+                  class="hidden"
+                />
+              </div>
+            </div>
+          </div>
+
+          <!-- Stats Card -->
+          <div class="card bg-base-100 shadow-md">
+            <div class="card-body">
+              <h3 class="card-title text-lg mb-4">{ui[locale].profile.stats}</h3>
+              <div class="stat p-0">
+                <div class="stat-figure text-primary">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+                  </svg>
+                </div>
+                <div class="stat-title">{ui[locale].profile.svgCreated}</div>
+                <div class="stat-value text-primary">{svgCount}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Main Content: Profile Form -->
+        <div class="lg:col-span-2">
+          <div class="card bg-base-100 shadow-md">
+            <div class="card-body">
+              <h3 class="card-title text-xl mb-6">{ui[locale].profile.personalInfo}</h3>
+              
+              <form id="profile-form" class="space-y-4">
+                <!-- Username -->
+                <div class="form-control">
+                  <label class="label">
+                    <span class="label-text font-semibold">{ui[locale].profile.username}</span>
+                  </label>
+                  <input 
+                    type="text" 
+                    name="username"
+                    value={user.username || ''}
+                    placeholder={ui[locale].profile.usernamePlaceholder}
+                    class="input input-bordered w-full"
+                    required
+                  />
+                </div>
+
+                <!-- Email (read-only) -->
+                <div class="form-control">
+                  <label class="label">
+                    <span class="label-text font-semibold">{ui[locale].profile.email}</span>
+                  </label>
+                  <input 
+                    type="email" 
+                    value={user.email || ''}
+                    class="input input-bordered w-full bg-base-200"
+                    disabled
+                  />
+                  <label class="label">
+                    <span class="label-text-alt text-base-content/60">Email cannot be changed</span>
+                  </label>
+                </div>
+
+                <!-- Bio -->
+                <div class="form-control">
+                  <label class="label">
+                    <span class="label-text font-semibold">{ui[locale].profile.bio}</span>
+                  </label>
+                  <textarea 
+                    name="bio"
+                    placeholder={ui[locale].profile.bioPlaceholder}
+                    class="textarea textarea-bordered h-24 w-full"
+                    maxlength="200">{user.bio || ''}</textarea>
+                  <label class="label">
+                    <span class="label-text-alt text-base-content/60">Max 200 characters</span>
+                  </label>
+                </div>
+
+                <!-- Location -->
+                <div class="form-control">
+                  <label class="label">
+                    <span class="label-text font-semibold">{ui[locale].profile.location}</span>
+                  </label>
+                  <input 
+                    type="text" 
+                    name="location"
+                    value={user.location || ''}
+                    placeholder={ui[locale].profile.locationPlaceholder}
+                    class="input input-bordered w-full"
+                  />
+                </div>
+
+                <!-- Website -->
+                <div class="form-control">
+                  <label class="label">
+                    <span class="label-text font-semibold">{ui[locale].profile.website}</span>
+                  </label>
+                  <input 
+                    type="url" 
+                    name="website"
+                    value={user.website || ''}
+                    placeholder={ui[locale].profile.websitePlaceholder}
+                    class="input input-bordered w-full"
+                  />
+                </div>
+
+                <!-- Message de feedback -->
+                <div id="feedback-message" class="hidden"></div>
+
+                <!-- Submit Button -->
+                <div class="card-actions justify-end pt-4">
+                  <button 
+                    type="submit" 
+                    class="btn btn-primary gap-2"
+                    id="submit-btn"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                    </svg>
+                    {ui[locale].profile.updateButton}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</Layout>
+
+<script>
+  // Gestion de l'upload d'avatar
+  const avatarInput = document.getElementById('avatar-upload') as HTMLInputElement;
+  const avatarPreview = document.getElementById('avatar-preview') as HTMLImageElement;
+
+  avatarInput?.addEventListener('change', async (e) => {
+    const file = (e.target as HTMLInputElement).files?.[0];
+    if (!file) return;
+
+    // Prévisualisation immédiate
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      if (avatarPreview.tagName === 'IMG') {
+        avatarPreview.src = e.target?.result as string;
+      } else {
+        // Remplacer le div par une img
+        const newImg = document.createElement('img');
+        newImg.id = 'avatar-preview';
+        newImg.src = e.target?.result as string;
+        newImg.alt = 'User';
+        avatarPreview.parentElement?.replaceChild(newImg, avatarPreview);
+      }
+    };
+    reader.readAsDataURL(file);
+
+    // Upload vers le serveur
+    const formData = new FormData();
+    formData.append('avatar', file);
+
+    try {
+      const response = await fetch('/api/updateAvatar', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const result = await response.json();
+      
+      if (response.ok) {
+        showFeedback('success', result.message || '✅ Avatar updated!');
+      } else {
+        showFeedback('error', result.error || '❌ Error uploading avatar');
+      }
+    } catch (error) {
+      showFeedback('error', '❌ Network error');
+      console.error('Avatar upload error:', error);
+    }
+  });
+
+  // Gestion du formulaire de profil
+  const profileForm = document.getElementById('profile-form') as HTMLFormElement;
+  const submitBtn = document.getElementById('submit-btn') as HTMLButtonElement;
+
+  profileForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const formData = new FormData(profileForm);
+    const data = {
+      username: formData.get('username'),
+      bio: formData.get('bio'),
+      location: formData.get('location'),
+      website: formData.get('website'),
+    };
+
+    // Désactiver le bouton pendant la requête
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="loading loading-spinner"></span> Updating...';
+
+    try {
+      const response = await fetch('/api/updateProfile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        showFeedback('success', result.message || '✅ Profile updated!');
+      } else {
+        showFeedback('error', result.error || '❌ Error updating profile');
+      }
+    } catch (error) {
+      showFeedback('error', '❌ Network error');
+      console.error('Profile update error:', error);
+    } finally {
+      // Réactiver le bouton
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+        </svg>
+        Update Profile
+      `;
+    }
+  });
+
+  // Fonction pour afficher les messages de feedback
+  function showFeedback(type: 'success' | 'error', message: string) {
+    const feedbackEl = document.getElementById('feedback-message');
+    if (!feedbackEl) return;
+
+    feedbackEl.className = type === 'success' 
+      ? 'alert alert-success' 
+      : 'alert alert-error';
+    feedbackEl.textContent = message;
+    feedbackEl.classList.remove('hidden');
+
+    // Masquer après 5 secondes
+    setTimeout(() => {
+      feedbackEl.classList.add('hidden');
+    }, 5000);
+  }
+</script>

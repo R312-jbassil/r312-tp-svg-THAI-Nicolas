@@ -7,6 +7,7 @@ interface Props {
     name: string;
     code: string;
     prompt?: string;
+    tags?: string;
   };
   locale?: 'en' | 'fr';
 }
@@ -32,11 +33,38 @@ if (svg.prompt) {
 }
 ---
 
-<div class="card bg-base-100 shadow-lg hover:shadow-xl transition-all duration-300 border border-base-300">
+<div 
+  class="card bg-base-100 shadow-lg hover:shadow-xl transition-all duration-300 border border-base-300" 
+  data-svg-id={svg.id}
+  data-name={svg.name}
+  data-tags={svg.tags || ''}
+>
   <div class="card-body p-4">
-    <h3 class="card-title text-lg font-semibold mb-3 truncate" title={svg.name}>
-      {svg.name}
-    </h3>
+    <div class="flex justify-between items-start mb-3">
+      <h3 class="card-title text-lg font-semibold truncate flex-1" title={svg.name}>
+        {svg.name}
+      </h3>
+      <button 
+        class="btn btn-ghost btn-xs btn-circle" 
+        onclick={`openTagModal('${svg.id}', '${svg.name}', '${svg.tags || ''}')`}
+        title={ui[locale].gallery.manageTags}
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+        </svg>
+      </button>
+    </div>
+
+    <!-- Tags -->
+    {svg.tags && svg.tags.length > 0 && (
+      <div class="flex flex-wrap gap-1 mb-2">
+        {svg.tags.split(',').map((tag: string) => (
+          tag.trim() && (
+            <span class="badge badge-sm badge-primary">{tag.trim()}</span>
+          )
+        ))}
+      </div>
+    )}
     
     <div class="bg-base-200 rounded-lg p-4 flex items-center justify-center h-48 overflow-hidden">
       <div class="max-w-full max-h-full flex items-center justify-center">

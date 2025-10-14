@@ -32,8 +32,41 @@ if (user && user.id) {
 <Layout>
   <div class="min-h-screen bg-base-200 p-4">
     <div class="max-w-6xl mx-auto">
-      <h1 class="text-3xl font-bold text-center mb-8">{ui[locale].gallery.title}</h1>
+      <h1 class="text-3xl font-bold text-center mb-6">{ui[locale].gallery.title}</h1>
       
+      <!-- Barre de recherche et filtres -->
+      <div class="mb-6 space-y-4">
+        <div class="flex flex-col sm:flex-row gap-3">
+          <!-- Recherche par nom -->
+          <div class="flex-1">
+            <div class="relative">
+              <input 
+                type="text" 
+                id="search-input"
+                placeholder={ui[locale].gallery.searchPlaceholder}
+                class="input input-bordered w-full pl-10"
+              />
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 absolute left-3 top-1/2 -translate-y-1/2 text-base-content/50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
+          </div>
+          
+          <!-- Filtre par tags -->
+          <select id="tag-filter" class="select select-bordered min-w-[200px]">
+            <option value="">{ui[locale].gallery.allTags}</option>
+          </select>
+        </div>
+
+        <!-- Tags sélectionnés -->
+        <div id="selected-tags" class="flex flex-wrap gap-2 empty:hidden"></div>
+      </div>
+      
+      <!-- Message "Aucun résultat" -->
+      <div id="no-results" class="hidden text-center py-8">
+        <p class="text-base-content/60">{ui[locale].gallery.noResults}</p>
+      </div>
+
       <div id="svg-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {svgs.length > 0 ? (
           svgs.map((svg) => (
@@ -173,5 +206,237 @@ if (user && user.id) {
         }
       });
     });
+
+    // === SYSTÈME DE FILTRAGE ===
+    const searchInput = document.getElementById('search-input') as HTMLInputElement;
+    const tagFilter = document.getElementById('tag-filter') as HTMLSelectElement;
+    const svgList = document.getElementById('svg-list');
+    const noResults = document.getElementById('no-results');
+    
+    // Récupérer tous les SVG cards
+    const getAllCards = () => Array.from(document.querySelectorAll('[data-svg-id]')) as HTMLElement[];
+    
+    // Collecter tous les tags uniques
+    const collectAllTags = () => {
+      const tags = new Set<string>();
+      getAllCards().forEach(card => {
+        const cardTags = card.getAttribute('data-tags');
+        if (cardTags) {
+          cardTags.split(',').forEach(tag => {
+            const trimmed = tag.trim();
+            if (trimmed) tags.add(trimmed);
+          });
+        }
+      });
+      return Array.from(tags).sort();
+    };
+
+    // Populer le select avec les tags
+    const populateTagFilter = () => {
+      const allTags = collectAllTags();
+      const currentValue = tagFilter.value;
+      
+      // Garder l'option "Tous les Tags"
+      tagFilter.innerHTML = `<option value="">${translations.allTags || 'All Tags'}</option>`;
+      
+      // Ajouter les tags
+      allTags.forEach(tag => {
+        const option = document.createElement('option');
+        option.value = tag;
+        option.textContent = tag;
+        tagFilter.appendChild(option);
+      });
+      
+      // Restaurer la sélection
+      if (currentValue) tagFilter.value = currentValue;
+    };
+
+    // Fonction de filtrage
+    const filterCards = () => {
+      const searchTerm = searchInput?.value.toLowerCase() || '';
+      const selectedTag = tagFilter?.value || '';
+      const cards = getAllCards();
+      
+      let visibleCount = 0;
+      
+      cards.forEach(card => {
+        const name = (card.getAttribute('data-name') || '').toLowerCase();
+        const tags = card.getAttribute('data-tags') || '';
+        const tagArray = tags.split(',').map(t => t.trim());
+        
+        // Vérifier les conditions de filtrage
+        const matchesSearch = !searchTerm || name.includes(searchTerm);
+        const matchesTag = !selectedTag || tagArray.includes(selectedTag);
+        
+        // Afficher/Masquer la card
+        if (matchesSearch && matchesTag) {
+          card.style.display = '';
+          visibleCount++;
+        } else {
+          card.style.display = 'none';
+        }
+      });
+      
+      // Afficher/masquer le message "Aucun résultat"
+      if (noResults) {
+        if (visibleCount === 0 && cards.length > 0) {
+          noResults.classList.remove('hidden');
+        } else {
+          noResults.classList.add('hidden');
+        }
+      }
+    };
+
+    // Initialiser les tags
+    populateTagFilter();
+    
+    // Écouter les changements
+    searchInput?.addEventListener('input', filterCards);
+    tagFilter?.addEventListener('change', filterCards);
+    
+    // Écouter les mises à jour de tags (custom event)
+    document.addEventListener('tagsUpdated', () => {
+      populateTagFilter();
+      filterCards();
+    });
   });
+
+  // === GESTION DES TAGS ===
+  let currentSvgId = '';
+  let currentTags: string[] = [];
+
+  (window as any).openTagModal = (svgId: string, svgName: string, tags: string) => {
+    currentSvgId = svgId;
+    currentTags = tags ? tags.split(',').map(t => t.trim()).filter(Boolean) : [];
+    
+    const modal = document.getElementById('tag-modal') as HTMLDialogElement;
+    const modalTitle = document.getElementById('modal-svg-name');
+    const tagsList = document.getElementById('current-tags');
+    
+    if (modalTitle) modalTitle.textContent = svgName;
+    if (tagsList) {
+      tagsList.innerHTML = currentTags.length > 0 
+        ? currentTags.map(tag => `
+            <div class="badge badge-primary gap-2">
+              ${tag}
+              <button class="btn btn-ghost btn-xs btn-circle" onclick="removeTag('${tag}')">✕</button>
+            </div>
+          `).join('')
+        : `<p class="text-sm text-base-content/60">${translations.noResults || 'No tags yet'}</p>`;
+    }
+    
+    modal?.showModal();
+  };
+
+  (window as any).removeTag = async (tag: string) => {
+    currentTags = currentTags.filter(t => t !== tag);
+    await updateTags();
+  };
+
+  (window as any).addNewTag = async () => {
+    const input = document.getElementById('new-tag-input') as HTMLInputElement;
+    const newTag = input.value.trim();
+    
+    if (!newTag) return;
+    
+    if (!currentTags.includes(newTag)) {
+      currentTags.push(newTag);
+      await updateTags();
+      input.value = '';
+    }
+  };
+
+  async function updateTags() {
+    try {
+      const response = await fetch('/api/updateTags', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          svgId: currentSvgId,
+          tags: currentTags.join(','),
+        }),
+      });
+
+      if (response.ok) {
+        // Mettre à jour la card dans le DOM
+        const card = document.querySelector(`[data-svg-id="${currentSvgId}"]`) as HTMLElement;
+        if (card) {
+          card.setAttribute('data-tags', currentTags.join(','));
+          
+          // Mettre à jour l'affichage des tags dans la card
+          const tagsContainer = card.querySelector('.tags-container');
+          if (tagsContainer) {
+            tagsContainer.innerHTML = currentTags.length > 0
+              ? currentTags.map(tag => `<span class="badge badge-sm badge-primary">${tag}</span>`).join('')
+              : '';
+          }
+        }
+        
+        // Mettre à jour le modal
+        const tagsList = document.getElementById('current-tags');
+        if (tagsList) {
+          tagsList.innerHTML = currentTags.length > 0 
+            ? currentTags.map(tag => `
+                <div class="badge badge-primary gap-2">
+                  ${tag}
+                  <button class="btn btn-ghost btn-xs btn-circle" onclick="removeTag('${tag}')">✕</button>
+                </div>
+              `).join('')
+            : `<p class="text-sm text-base-content/60">${translations.noResults || 'No tags yet'}</p>`;
+        }
+        
+        // Trigger l'événement pour mettre à jour les filtres
+        document.dispatchEvent(new Event('tagsUpdated'));
+      }
+    } catch (error) {
+      console.error('Error updating tags:', error);
+      alert(translations.tagError || 'Error managing tags');
+    }
+  }
 </script>
+
+<!-- Modal de gestion des tags -->
+<dialog id="tag-modal" class="modal">
+  <div class="modal-box">
+    <h3 class="font-bold text-lg mb-4">{ui[locale].gallery.manageTags}</h3>
+    <p class="text-sm text-base-content/70 mb-4" id="modal-svg-name"></p>
+    
+    <!-- Tags actuels -->
+    <div class="mb-4">
+      <label class="label">
+        <span class="label-text font-semibold">{ui[locale].gallery.tagsButton}</span>
+      </label>
+      <div id="current-tags" class="flex flex-wrap gap-2 min-h-[2rem] p-2 bg-base-200 rounded-lg">
+        <p class="text-sm text-base-content/60">{ui[locale].gallery.noResults}</p>
+      </div>
+    </div>
+    
+    <!-- Ajouter un tag -->
+    <div class="form-control">
+      <label class="label">
+        <span class="label-text font-semibold">{ui[locale].gallery.addTag}</span>
+      </label>
+      <div class="join w-full">
+        <input 
+          type="text" 
+          id="new-tag-input"
+          placeholder={ui[locale].gallery.enterTagName}
+          class="input input-bordered join-item flex-1"
+          onkeypress="if(event.key === 'Enter') { event.preventDefault(); addNewTag(); }"
+        />
+        <button class="btn btn-primary join-item" onclick="addNewTag()">
+          {ui[locale].gallery.createTag}
+        </button>
+      </div>
+    </div>
+    
+    <div class="modal-action">
+      <form method="dialog">
+        <button class="btn">{ui[locale].login.redirecting}</button>
+      </form>
+    </div>
+  </div>
+  <form method="dialog" class="modal-backdrop">
+    <button>close</button>
+  </form>
+</dialog>

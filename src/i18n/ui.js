@@ -5,8 +5,15 @@ export const ui = {
       generator: "Generator",
       gallery: "Gallery",
       language: "Language",
+      theme: "Theme",
       login: "Login",
       logout: "Logout",
+    },
+    themes: {
+      light: "Light",
+      dark: "Dark",
+      cyberpunk: "Cyberpunk",
+      dracula: "Dracula",
     },
     login: {
       title: "Login",
@@ -87,8 +94,15 @@ export const ui = {
       generator: "Générateur",
       gallery: "Galerie",
       language: "Langue",
+      theme: "Thème",
       login: "Connexion",
       logout: "Déconnexion",
+    },
+    themes: {
+      light: "Clair",
+      dark: "Sombre",
+      cyberpunk: "Cyberpunk",
+      dracula: "Dracula",
     },
     login: {
       title: "Connexion",

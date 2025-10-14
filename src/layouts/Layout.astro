@@ -4,9 +4,12 @@ import Menu from "../components/Menu.astro";
 
 // Langue par défaut
 const locale = "fr";
+
+// Récupérer le thème depuis les cookies
+const themeCookie = Astro.cookies.get("theme")?.value || "light";
 ---
 <!doctype html>
-<html lang="fr" data-theme="light" class="h-full">
+<html lang="fr" data-theme={themeCookie} class="h-full">
 	<head>
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width" />
@@ -24,5 +27,12 @@ const locale = "fr";
 				<slot />
 			</div>
 		</div>
+		
+		<!-- Script pour gérer le changement de thème -->
+		<script is:inline>
+			// Charger le thème depuis localStorage au chargement
+			const savedTheme = localStorage.getItem('theme') || 'light';
+			document.documentElement.setAttribute('data-theme', savedTheme);
+		</script>
 	</body>
 </html>

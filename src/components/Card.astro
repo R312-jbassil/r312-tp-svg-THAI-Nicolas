@@ -32,13 +32,13 @@ if (svg.prompt) {
 }
 ---
 
-<div class="card bg-white shadow-xl hover:shadow-2xl transition-shadow duration-300">
+<div class="card bg-base-100 shadow-lg hover:shadow-xl transition-all duration-300 border border-base-300">
   <div class="card-body p-4">
-    <h3 class="card-title text-lg font-semibold text-gray-800 mb-3 truncate" title={svg.name}>
+    <h3 class="card-title text-lg font-semibold mb-3 truncate" title={svg.name}>
       {svg.name}
     </h3>
     
-    <div class="bg-gradient-to-br from-violet-50 to-purple-50 rounded-lg p-4 flex items-center justify-center h-48 overflow-hidden border border-violet-200">
+    <div class="bg-base-200 rounded-lg p-4 flex items-center justify-center h-48 overflow-hidden">
       <div class="max-w-full max-h-full flex items-center justify-center">
         <div 
           set:html={svg.code} 
@@ -49,39 +49,42 @@ if (svg.prompt) {
     </div>
     
     {displayPrompt && (
-      <p class="text-xs text-gray-500 mt-2 line-clamp-2" title={displayPrompt}>
+      <p class="text-xs text-base-content/60 mt-2 line-clamp-2" title={displayPrompt}>
         <span class="font-medium">Prompt:</span> {displayPrompt}
       </p>
     )}
     
-    <div class="card-actions justify-end mt-4 gap-2">
+    <div class="card-actions justify-between mt-4 gap-2">
       <a 
         href={`/gallery/${svg.id}`}
-        class="btn btn-accent btn-sm"
+        class="btn btn-primary btn-sm gap-1"
       >
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
         </svg>
         {ui[locale].gallery.editButton}
       </a>
-      <button 
-        class="btn btn-primary btn-sm" 
-        onclick={`copySVGCode('${svg.id}', \`${svg.code.replace(/`/g, '\\`')}\`)`}
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-        </svg>
-        {ui[locale].gallery.copyButton}
-      </button>
-      <button 
-        class="btn btn-error btn-sm" 
-        onclick={`deleteSVGItem('${svg.id}')`}
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-        </svg>
-        {ui[locale].gallery.deleteButton}
-      </button>
+      
+      <div class="flex gap-2">
+        <button 
+          class="btn btn-ghost btn-sm btn-square" 
+          onclick={`copySVGCode('${svg.id}', \`${svg.code.replace(/`/g, '\\`')}\`)`}
+          title={ui[locale].gallery.copyButton}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+          </svg>
+        </button>
+        <button 
+          class="btn btn-ghost btn-sm btn-square text-error" 
+          onclick={`deleteSVGItem('${svg.id}')`}
+          title={ui[locale].gallery.deleteButton}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+          </svg>
+        </button>
+      </div>
     </div>
   </div>
 </div>

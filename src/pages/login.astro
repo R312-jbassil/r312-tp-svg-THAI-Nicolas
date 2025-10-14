@@ -14,8 +14,8 @@ const user = Astro.locals.user;
 ---
 
 <Layout title={tLogin.title}>
-  <div class="min-h-[calc(100vh-4rem)] flex items-center justify-center bg-gradient-to-br from-base-200 to-base-300 p-4">
-    <div class="card w-full max-w-md shadow-2xl bg-base-100 hover:shadow-primary/20 transition-shadow duration-300 overflow-hidden relative">
+  <div class="min-h-[calc(100vh-4rem)] flex items-center justify-center bg-base-200 p-4">
+    <div class="card w-full max-w-md shadow-xl bg-base-100 overflow-hidden relative">
       <!-- Tabs pour switcher entre Login et Signup -->
       <div class="tabs tabs-boxed w-full justify-center bg-base-200 p-2">
         <a class="tab tab-active" id="login-tab">{tLogin.title}</a>

@@ -9,26 +9,26 @@ export const POST = async ({ request, cookies }) => {
     // Récupérer l'authentification depuis le cookie
     const authCookie = cookies.get("pb_auth")?.value;
     if (!authCookie) {
-      return new Response(
-        JSON.stringify({ error: "Not authenticated" }),
-        { status: 401, headers: { "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Not authenticated" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      });
     }
 
     pb.authStore.loadFromCookie(authCookie);
     if (!pb.authStore.isValid) {
-      return new Response(
-        JSON.stringify({ error: "Invalid authentication" }),
-        { status: 401, headers: { "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Invalid authentication" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      });
     }
 
     const userId = pb.authStore.record?.id;
     if (!userId) {
-      return new Response(
-        JSON.stringify({ error: "User ID not found" }),
-        { status: 400, headers: { "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "User ID not found" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
     }
 
     // Récupérer le fichier depuis le FormData
@@ -60,19 +60,19 @@ export const POST = async ({ request, cookies }) => {
     });
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
+      JSON.stringify({
+        success: true,
         message: "Avatar updated successfully",
-        user: updatedUser 
+        user: updatedUser,
       }),
       { status: 200, headers: { "Content-Type": "application/json" } }
     );
   } catch (error) {
     console.error("Avatar upload error:", error);
     return new Response(
-      JSON.stringify({ 
+      JSON.stringify({
         error: "Failed to upload avatar",
-        details: error.message 
+        details: error.message,
       }),
       { status: 500, headers: { "Content-Type": "application/json" } }
     );

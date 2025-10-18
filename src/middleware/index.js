@@ -20,7 +20,12 @@ export const onRequest = async (context, next) => {
 
   // Pour les routes API, on exige l'authentification sauf pour /api/login, /api/signup et /api/setTheme
   if (context.url.pathname.startsWith("/api/")) {
-    const publicApiRoutes = ["/api/login", "/api/signup", "/api/setTheme"];
+    const publicApiRoutes = [
+      "/api/login",
+      "/api/signup",
+      "/api/setTheme",
+      "/api/generateSVG",
+    ];
     if (
       !context.locals.user &&
       !publicApiRoutes.includes(context.url.pathname)

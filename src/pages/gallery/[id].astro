@@ -89,6 +89,20 @@ if (!svg) {
       <form id="input-prompt-form" class="flex flex-col gap-2 bg-base-300 p-4 flex-shrink-0 border-t" method="POST" autocomplete="off">
         <input type="hidden" name="history" value={JSON.stringify(svg?.chat_history)} />
         <input type="hidden" name="id" value={svg?.id} />
+        
+        <!-- Model Selector -->
+        <div class="flex items-center gap-2">
+          <label for="model-selector-detail" class="text-sm font-medium min-w-fit">
+            {ui[locale].generator.modelLabel}
+          </label>
+          <select id="model-selector-detail" class="select select-sm select-bordered flex-1">
+            <option value="openai/gpt-oss-20b:free">{ui[locale].generator.models["openai/gpt-oss-20b:free"]}</option>
+            <option value="meta-llama/llama-3.2-3b-instruct:free">{ui[locale].generator.models["meta-llama/llama-3.2-3b-instruct:free"]}</option>
+            <option value="mistralai/mistral-7b-instruct:free">{ui[locale].generator.models["mistralai/mistral-7b-instruct:free"]}</option>
+          </select>
+        </div>
+        
+        <!-- Prompt Input -->
         <div class="flex items-center gap-2">
           <input id="prompt-input" name="editPrompt" type="text" class="input flex-grow" placeholder={ui[locale].gallery.modifyPlaceholder} />
           <button class="btn btn-primary" type="submit">{ui[locale].gallery.modifyButton}</button>
@@ -116,10 +130,17 @@ if (!svg) {
     try {
       console.log("Envoi de la requête generateSVG avec:", messages);
       
+      // Récupérer le modèle sélectionné
+      const modelSelector = document.getElementById('model-selector-detail');
+      const selectedModel = modelSelector ? modelSelector.value : 'openai/gpt-oss-20b:free';
+      
       const response = await fetch('/api/generateSVG', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(messages),
+        body: JSON.stringify({
+          messages: messages,
+          model: selectedModel
+        }),
       });
       
       console.log("Statut de la réponse:", response.status);

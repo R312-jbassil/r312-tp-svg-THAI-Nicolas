@@ -80,6 +80,12 @@ export const ui = {
       saveButton: "Save",
       editButton: "Edit",
       viewButton: "View",
+      modelLabel: "AI Model:",
+      models: {
+        "openai/gpt-oss-20b:free": "GPT-OSS 20B (Recommended)",
+        "meta-llama/llama-3.2-3b-instruct:free": "Llama 3.2 3B (Free)",
+        "mistralai/mistral-7b-instruct:free": "Mistral 7B Instruct (Free)",
+      },
     },
     gallery: {
       title: "SVG Gallery",
@@ -219,6 +225,12 @@ export const ui = {
       saveButton: "Sauvegarder",
       editButton: "Modifier",
       viewButton: "Voir",
+      modelLabel: "Modèle IA :",
+      models: {
+        "openai/gpt-oss-20b:free": "GPT-OSS 20B (Recommandé)",
+        "meta-llama/llama-3.2-3b-instruct:free": "Llama 3.2 3B (Gratuit)",
+        "mistralai/mistral-7b-instruct:free": "Mistral 7B Instruct (Gratuit)",
+      },
     },
     gallery: {
       title: "Galerie SVG",

@@ -66,12 +66,30 @@ const user = Astro.locals.user;
       <!-- Input Form -->
       <div class="mt-4 md:mt-6 bg-base-100 rounded-xl shadow-lg p-3 sm:p-4">
         <form class="flex flex-col gap-3">
+          <!-- Model Selector -->
+          <div class="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+            <label for="model-selector" class="label text-sm font-medium min-w-fit">
+              <span class="label-text">{ui[locale].generator.modelLabel}</span>
+            </label>
+            <select 
+              id="model-selector" 
+              class="select select-bordered w-full sm:flex-1 text-sm"
+            >
+              <option value="openai/gpt-oss-20b:free">{ui[locale].generator.models["openai/gpt-oss-20b:free"]}</option>
+              <option value="meta-llama/llama-3.2-3b-instruct:free">{ui[locale].generator.models["meta-llama/llama-3.2-3b-instruct:free"]}</option>
+              <option value="mistralai/mistral-7b-instruct:free">{ui[locale].generator.models["mistralai/mistral-7b-instruct:free"]}</option>
+            </select>
+          </div>
+          
+          <!-- Prompt Input -->
           <input 
             id="user-prompt" 
             type="text" 
             class="input input-bordered w-full text-sm sm:text-base" 
             placeholder={ui[locale].generator.promptPlaceholder}
           />
+          
+          <!-- Action Buttons -->
           <div class="flex flex-col sm:flex-row gap-2">
             <button id="generate-button" type="button" class="btn btn-primary gap-2 flex-1">
               <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -127,15 +145,27 @@ const user = Astro.locals.user;
 	async function generateSVG(promptList: Array<{role: string, content: string}>) {
 		console.log('Generating SVG for promptList:', promptList);
 		
+		// Récupérer le modèle sélectionné
+		const modelSelector = document.getElementById('model-selector') as HTMLSelectElement;
+		const selectedModel = modelSelector ? modelSelector.value : 'openai/gpt-oss-20b:free';
+		
 		const res = await fetch('/api/generateSVG', {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify(promptList), // Envoyer la liste des prompts
+			body: JSON.stringify({ 
+				messages: promptList,
+				model: selectedModel
+			}),
 		});
 		const data = await res.json();
 		
-		// Retourner l'objet message complet de l'assistant
-		return data.svg || { content: '' };
+		console.log('Données reçues de l\'API:', data);
+		
+		// Retourner un objet avec le contenu SVG
+		return {
+			content: data.content || data.svg || '',
+			svg: data.svg || data.content || ''
+		};
 	}
 
 	// Fonction utilitaire pour sauvegarder le SVG avec ta structure existante

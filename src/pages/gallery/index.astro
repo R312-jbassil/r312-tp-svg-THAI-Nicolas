@@ -13,12 +13,13 @@ let svgs: any[] = [];
 // Vérifier si l'utilisateur est connecté
 if (user && user.id) {
   try {
-    // Récupérer uniquement les SVGs de l'utilisateur connecté
+    // Récupérer uniquement les SVGs de l'utilisateur connecté avec les tags
     svgs = await pb
       .collection(Collections.Svg)
       .getFullList({
         sort: "-created", // Trie les SVGs du plus récent au plus ancien
         filter: `user = "${user.id}"`, // Filtre pour n'afficher que les SVGs de l'utilisateur
+        expand: "tags", // Charge les informations complètes des tags
       });
     console.log(`✅ ${svgs.length} SVG(s) trouvé(s) pour l'utilisateur ${user.id}`);
   } catch (error) {
@@ -32,7 +33,18 @@ if (user && user.id) {
 <Layout>
   <div class="min-h-screen bg-base-200 p-4">
     <div class="max-w-6xl mx-auto">
-      <h1 class="text-3xl font-bold text-center mb-6">{ui[locale].gallery.title}</h1>
+      <div class="flex justify-between items-center mb-6">
+        <h1 class="text-3xl font-bold">{ui[locale].gallery.title}</h1>
+        <button 
+          class="btn btn-outline gap-2"
+          onclick="openManageTagsModal()"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+          </svg>
+          {ui[locale].gallery.manageAllTags}
+        </button>
+      </div>
       
       <!-- Barre de recherche et filtres -->
       <div class="mb-6 space-y-4">
@@ -303,86 +315,352 @@ if (user && user.id) {
 
   // === GESTION DES TAGS ===
   let currentSvgId = '';
-  let currentTags: string[] = [];
+  let currentTagIds: string[] = [];
+  let allAvailableTags: any[] = [];
 
-  (window as any).openTagModal = (svgId: string, svgName: string, tags: string) => {
+  // Charger tous les tags de l'utilisateur
+  async function loadAllTags() {
+    try {
+      const response = await fetch('/api/tags/list');
+      const data = await response.json();
+      if (data.success) {
+        allAvailableTags = data.tags;
+      }
+    } catch (error) {
+      console.error('Error loading tags:', error);
+    }
+  }
+
+  // Charger les tags au démarrage
+  loadAllTags();
+
+  (window as any).openTagModal = async (svgId: string, svgName: string, tagIds: string[]) => {
     currentSvgId = svgId;
-    currentTags = tags ? tags.split(',').map(t => t.trim()).filter(Boolean) : [];
+    
+    // S'assurer que tous les tags sont chargés
+    await loadAllTags();
+    
+    // Récupérer les tags à jour depuis la base de données
+    try {
+      const svgResponse = await fetch(`/api/svg/getTags?svgId=${svgId}`);
+      const svgData = await svgResponse.json();
+      
+      // Mettre à jour avec les vrais tagIds depuis la base
+      if (svgData.success && svgData.tagIds) {
+        currentTagIds = svgData.tagIds;
+        
+        // Si l'API retourne aussi les objets tags complets, les ajouter à allAvailableTags
+        if (svgData.tags && svgData.tags.length > 0) {
+          svgData.tags.forEach((tag: any) => {
+            if (!allAvailableTags.find(t => t.id === tag.id)) {
+              allAvailableTags.push(tag);
+            }
+          });
+        }
+      } else {
+        currentTagIds = [];
+      }
+    } catch (error) {
+      console.error('Error loading SVG tags:', error);
+      // Fallback sur les tagIds passés en paramètre
+      currentTagIds = Array.isArray(tagIds) ? tagIds : [];
+    }
     
     const modal = document.getElementById('tag-modal') as HTMLDialogElement;
     const modalTitle = document.getElementById('modal-svg-name');
-    const tagsList = document.getElementById('current-tags');
     
     if (modalTitle) modalTitle.textContent = svgName;
-    if (tagsList) {
-      tagsList.innerHTML = currentTags.length > 0 
-        ? currentTags.map(tag => `
-            <div class="badge badge-primary gap-2">
-              ${tag}
-              <button class="btn btn-ghost btn-xs btn-circle" onclick="removeTag('${tag}')">✕</button>
-            </div>
-          `).join('')
-        : `<p class="text-sm text-base-content/60">${translations.noResults || 'No tags yet'}</p>`;
-    }
+    
+    // Ajouter un petit log pour debug
+    console.log('Opening modal - currentTagIds:', currentTagIds);
+    console.log('Opening modal - allAvailableTags:', allAvailableTags);
+    
+    renderCurrentTags();
+    renderAvailableTags();
     
     modal?.showModal();
   };
 
-  (window as any).removeTag = async (tag: string) => {
-    currentTags = currentTags.filter(t => t !== tag);
-    await updateTags();
+  function renderCurrentTags() {
+    const tagsList = document.getElementById('current-tags');
+    if (!tagsList) return;
+    
+    const currentTags = allAvailableTags.filter(tag => currentTagIds.includes(tag.id));
+    
+    tagsList.innerHTML = currentTags.length > 0 
+      ? currentTags.map(tag => `
+          <div class="badge gap-2" style="background-color: ${tag.color || '#3B82F6'}; color: white;">
+            ${tag.name}
+            <button class="btn btn-ghost btn-xs btn-circle" onclick="removeTagFromSvg('${tag.id}')">✕</button>
+          </div>
+        `).join('')
+      : `<p class="text-sm text-base-content/60">${translations.noResults || 'No tags yet'}</p>`;
+  }
+
+  function renderAvailableTags() {
+    const availableList = document.getElementById('available-tags');
+    if (!availableList) return;
+    
+    // Tags non encore assignés au SVG
+    const availableTags = allAvailableTags.filter(tag => !currentTagIds.includes(tag.id));
+    
+    availableList.innerHTML = availableTags.length > 0
+      ? availableTags.map(tag => `
+          <button 
+            class="badge badge-outline gap-2 cursor-pointer hover:badge-primary"
+            onclick="addTagToSvg('${tag.id}')"
+            style="border-color: ${tag.color || '#3B82F6'};"
+          >
+            ${tag.name}
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+          </button>
+        `).join('')
+      : `<p class="text-sm text-base-content/60">${translations.allTagsAssigned || 'All tags assigned'}</p>`;
+  }
+
+  (window as any).removeTagFromSvg = async (tagId: string) => {
+    currentTagIds = currentTagIds.filter(id => id !== tagId);
+    await updateSvgTags();
   };
 
-  (window as any).addNewTag = async () => {
-    const input = document.getElementById('new-tag-input') as HTMLInputElement;
-    const newTag = input.value.trim();
-    
-    if (!newTag) return;
-    
-    if (!currentTags.includes(newTag)) {
-      currentTags.push(newTag);
-      await updateTags();
-      input.value = '';
+  (window as any).addTagToSvg = async (tagId: string) => {
+    if (!currentTagIds.includes(tagId)) {
+      currentTagIds.push(tagId);
+      await updateSvgTags();
     }
   };
 
-  async function updateTags() {
+  (window as any).createNewTag = async () => {
+    const input = document.getElementById('new-tag-input') as HTMLInputElement;
+    const colorInput = document.getElementById('new-tag-color') as HTMLInputElement;
+    const tagName = input.value.trim();
+    const tagColor = colorInput.value;
+    
+    if (!tagName) return;
+    
+    try {
+      const response = await fetch('/api/tags/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: tagName, color: tagColor }),
+      });
+
+      const data = await response.json();
+      
+      if (response.ok && data.success) {
+        // Ajouter le nouveau tag à la liste globale
+        allAvailableTags.push(data.tag);
+        
+        // Ajouter le tag au SVG actuel
+        currentTagIds.push(data.tag.id);
+        
+        // Sauvegarder les modifications
+        await updateSvgTags();
+        
+        // Forcer le re-render des tags après l'update
+        renderCurrentTags();
+        renderAvailableTags();
+        
+        // Réinitialiser les inputs
+        input.value = '';
+        colorInput.value = '#3B82F6';
+        
+        alert(translations.tagCreated || 'Tag created!');
+      } else if (response.status === 409) {
+        alert(translations.tagAlreadyExists || 'Tag already exists!');
+      } else {
+        alert(data.error || (translations.tagError || 'Error creating tag'));
+      }
+    } catch (error) {
+      console.error('Error creating tag:', error);
+      alert(translations.tagError || 'Error creating tag');
+    }
+  };
+
+  (window as any).deleteTag = async (tagId: string) => {
+    if (!confirm(translations.deleteTagConfirm || 'Delete this tag? It will be removed from all SVGs.')) return;
+    
+    try {
+      const response = await fetch('/api/tags/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tagId }),
+      });
+
+      if (response.ok) {
+        // Retirer le tag de la liste
+        allAvailableTags = allAvailableTags.filter(tag => tag.id !== tagId);
+        currentTagIds = currentTagIds.filter(id => id !== tagId);
+        
+        renderCurrentTags();
+        renderAvailableTags();
+        
+        alert(translations.tagRemoved || 'Tag deleted!');
+        
+        // Recharger la page pour mettre à jour toutes les cards
+        setTimeout(() => location.reload(), 1000);
+      }
+    } catch (error) {
+      console.error('Error deleting tag:', error);
+      alert(translations.tagError || 'Error deleting tag');
+    }
+  };
+
+  // === GESTION GLOBALE DES TAGS ===
+  (window as any).openManageTagsModal = async () => {
+    await loadAllTags(); // Recharger les tags
+    renderAllTagsList();
+    const modal = document.getElementById('manage-tags-modal') as HTMLDialogElement;
+    modal?.showModal();
+  };
+
+  function renderAllTagsList() {
+    const listContainer = document.getElementById('all-tags-list');
+    if (!listContainer) return;
+    
+    if (allAvailableTags.length === 0) {
+      listContainer.innerHTML = `<p class="text-sm text-base-content/60">${translations.noTagsYet || 'No tags yet. Create your first tag!'}</p>`;
+      return;
+    }
+    
+    listContainer.innerHTML = allAvailableTags.map(tag => `
+      <div class="flex items-center justify-between p-3 bg-base-200 rounded-lg hover:bg-base-300 transition-colors">
+        <div class="flex items-center gap-3">
+          <div class="w-6 h-6 rounded" style="background-color: ${tag.color || '#3B82F6'}"></div>
+          <span class="font-medium">${tag.name}</span>
+        </div>
+        <button 
+          class="btn btn-ghost btn-sm btn-square text-error"
+          onclick="deleteTagPermanent('${tag.id}')"
+          title="Delete tag"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+          </svg>
+        </button>
+      </div>
+    `).join('');
+  }
+
+  (window as any).createTagFromManage = async () => {
+    const input = document.getElementById('manage-new-tag-input') as HTMLInputElement;
+    const colorInput = document.getElementById('manage-new-tag-color') as HTMLInputElement;
+    const tagName = input.value.trim();
+    const tagColor = colorInput.value;
+    
+    if (!tagName) return;
+    
+    try {
+      const response = await fetch('/api/tags/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: tagName, color: tagColor }),
+      });
+
+      const data = await response.json();
+      
+      if (response.ok && data.success) {
+        // Ajouter le nouveau tag à la liste
+        allAvailableTags.push(data.tag);
+        renderAllTagsList();
+        
+        // Réinitialiser les inputs
+        input.value = '';
+        colorInput.value = '#3B82F6';
+        
+        alert(translations.tagCreated || 'Tag created!');
+      } else if (response.status === 409) {
+        alert(translations.tagAlreadyExists || 'Tag already exists!');
+      } else {
+        alert(data.error || (translations.tagError || 'Error creating tag'));
+      }
+    } catch (error) {
+      console.error('Error creating tag:', error);
+      alert(translations.tagError || 'Error creating tag');
+    }
+  };
+
+  (window as any).deleteTagPermanent = async (tagId: string) => {
+    if (!confirm(translations.deleteTagConfirm || 'Delete this tag permanently? It will be removed from all SVGs.')) return;
+    
+    try {
+      const response = await fetch('/api/tags/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tagId }),
+      });
+
+      if (response.ok) {
+        // Retirer le tag de la liste
+        allAvailableTags = allAvailableTags.filter(tag => tag.id !== tagId);
+        renderAllTagsList();
+        
+        alert(translations.tagRemoved || 'Tag deleted!');
+        
+        // Recharger la page après 1 seconde pour mettre à jour toutes les cards
+        setTimeout(() => location.reload(), 1000);
+      }
+    } catch (error) {
+      console.error('Error deleting tag:', error);
+      alert(translations.tagError || 'Error deleting tag');
+    }
+  };
+
+  async function updateSvgTags() {
     try {
       const response = await fetch('/api/updateTags', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           svgId: currentSvgId,
-          tags: currentTags.join(','),
+          tagIds: currentTagIds,
         }),
       });
 
       if (response.ok) {
+        // Recharger les tags
+        renderCurrentTags();
+        renderAvailableTags();
+        
         // Mettre à jour la card dans le DOM
         const card = document.querySelector(`[data-svg-id="${currentSvgId}"]`) as HTMLElement;
         if (card) {
-          card.setAttribute('data-tags', currentTags.join(','));
+          const currentTags = allAvailableTags.filter(tag => currentTagIds.includes(tag.id));
+          const tagNames = currentTags.map(t => t.name).join(',');
+          card.setAttribute('data-tags', tagNames);
+          card.setAttribute('data-tag-ids', currentTagIds.join(','));
+          
+          // Trouver ou créer le conteneur de badges dans la card
+          let badgesContainer = card.querySelector('.flex.flex-wrap.gap-1.mb-2');
+          
+          if (!badgesContainer && currentTags.length > 0) {
+            // Si le conteneur n'existe pas et qu'on a des tags, le créer
+            const cardBody = card.querySelector('.card-body');
+            const titleContainer = card.querySelector('.flex.justify-between.items-start.mb-3');
+            
+            if (cardBody && titleContainer) {
+              badgesContainer = document.createElement('div');
+              badgesContainer.className = 'flex flex-wrap gap-1 mb-2';
+              // Insérer après le titre
+              titleContainer.insertAdjacentElement('afterend', badgesContainer);
+            }
+          }
           
           // Mettre à jour l'affichage des tags dans la card
-          const tagsContainer = card.querySelector('.tags-container');
-          if (tagsContainer) {
-            tagsContainer.innerHTML = currentTags.length > 0
-              ? currentTags.map(tag => `<span class="badge badge-sm badge-primary">${tag}</span>`).join('')
-              : '';
+          if (badgesContainer) {
+            if (currentTags.length > 0) {
+              badgesContainer.innerHTML = currentTags.map(tag => `
+                <span class="badge badge-sm" style="background-color: ${tag.color || '#3B82F6'}; color: white;">
+                  ${tag.name}
+                </span>
+              `).join('');
+            } else {
+              // Supprimer le conteneur s'il n'y a plus de tags
+              badgesContainer.remove();
+            }
           }
-        }
-        
-        // Mettre à jour le modal
-        const tagsList = document.getElementById('current-tags');
-        if (tagsList) {
-          tagsList.innerHTML = currentTags.length > 0 
-            ? currentTags.map(tag => `
-                <div class="badge badge-primary gap-2">
-                  ${tag}
-                  <button class="btn btn-ghost btn-xs btn-circle" onclick="removeTag('${tag}')">✕</button>
-                </div>
-              `).join('')
-            : `<p class="text-sm text-base-content/60">${translations.noResults || 'No tags yet'}</p>`;
         }
         
         // Trigger l'événement pour mettre à jour les filtres
@@ -397,34 +675,54 @@ if (user && user.id) {
 
 <!-- Modal de gestion des tags -->
 <dialog id="tag-modal" class="modal">
-  <div class="modal-box">
-    <h3 class="font-bold text-lg mb-4">{ui[locale].gallery.manageTags}</h3>
+  <div class="modal-box max-w-2xl">
+    <h3 class="font-bold text-lg mb-2">{ui[locale].gallery.manageTags}</h3>
     <p class="text-sm text-base-content/70 mb-4" id="modal-svg-name"></p>
     
-    <!-- Tags actuels -->
+    <!-- Tags actuels du SVG -->
     <div class="mb-4">
       <label class="label">
-        <span class="label-text font-semibold">{ui[locale].gallery.tagsButton}</span>
+        <span class="label-text font-semibold">{ui[locale].gallery.currentTags}</span>
       </label>
-      <div id="current-tags" class="flex flex-wrap gap-2 min-h-[2rem] p-2 bg-base-200 rounded-lg">
+      <div id="current-tags" class="flex flex-wrap gap-2 min-h-[2rem] p-3 bg-base-200 rounded-lg">
         <p class="text-sm text-base-content/60">{ui[locale].gallery.noResults}</p>
       </div>
     </div>
     
-    <!-- Ajouter un tag -->
+    <!-- Tags disponibles -->
+    <div class="mb-4">
+      <label class="label">
+        <span class="label-text font-semibold">{ui[locale].gallery.availableTags}</span>
+      </label>
+      <div id="available-tags" class="flex flex-wrap gap-2 min-h-[2rem] p-3 bg-base-100 border-2 border-dashed border-base-300 rounded-lg">
+        <p class="text-sm text-base-content/60">Loading...</p>
+      </div>
+    </div>
+    
+    <!-- Créer un nouveau tag -->
     <div class="form-control">
       <label class="label">
-        <span class="label-text font-semibold">{ui[locale].gallery.addTag}</span>
+        <span class="label-text font-semibold">{ui[locale].gallery.createTag}</span>
       </label>
-      <div class="join w-full">
+      <div class="flex gap-2">
         <input 
           type="text" 
           id="new-tag-input"
           placeholder={ui[locale].gallery.enterTagName}
-          class="input input-bordered join-item flex-1"
-          onkeypress="if(event.key === 'Enter') { event.preventDefault(); addNewTag(); }"
+          class="input input-bordered flex-1"
+          onkeypress="if(event.key === 'Enter') { event.preventDefault(); createNewTag(); }"
         />
-        <button class="btn btn-primary join-item" onclick="addNewTag()">
+        <input 
+          type="color" 
+          id="new-tag-color"
+          value="#3B82F6"
+          class="input input-bordered w-16"
+          title="Tag color"
+        />
+        <button class="btn btn-primary" onclick="createNewTag()">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+          </svg>
           {ui[locale].gallery.createTag}
         </button>
       </div>
@@ -432,7 +730,62 @@ if (user && user.id) {
     
     <div class="modal-action">
       <form method="dialog">
-        <button class="btn">{ui[locale].login.redirecting}</button>
+        <button class="btn">{ui[locale].gallery.close}</button>
+      </form>
+    </div>
+  </div>
+  <form method="dialog" class="modal-backdrop">
+    <button>close</button>
+  </form>
+</dialog>
+
+<!-- Modal de gestion globale des tags -->
+<dialog id="manage-tags-modal" class="modal">
+  <div class="modal-box max-w-2xl">
+    <h3 class="font-bold text-lg mb-4">{ui[locale].gallery.manageAllTags}</h3>
+    
+    <!-- Créer un nouveau tag -->
+    <div class="form-control mb-6">
+      <label class="label">
+        <span class="label-text font-semibold">{ui[locale].gallery.createNewTag}</span>
+      </label>
+      <div class="flex gap-2">
+        <input 
+          type="text" 
+          id="manage-new-tag-input"
+          placeholder={ui[locale].gallery.enterTagName}
+          class="input input-bordered flex-1"
+          onkeypress="if(event.key === 'Enter') { event.preventDefault(); createTagFromManage(); }"
+        />
+        <input 
+          type="color" 
+          id="manage-new-tag-color"
+          value="#3B82F6"
+          class="input input-bordered w-16"
+          title="Tag color"
+        />
+        <button class="btn btn-primary" onclick="createTagFromManage()">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+          </svg>
+          {ui[locale].gallery.createTag}
+        </button>
+      </div>
+    </div>
+    
+    <!-- Liste de tous les tags -->
+    <div>
+      <label class="label">
+        <span class="label-text font-semibold">{ui[locale].gallery.allYourTags}</span>
+      </label>
+      <div id="all-tags-list" class="space-y-2 max-h-96 overflow-y-auto">
+        <p class="text-sm text-base-content/60">Loading...</p>
+      </div>
+    </div>
+    
+    <div class="modal-action">
+      <form method="dialog">
+        <button class="btn">{ui[locale].gallery.close}</button>
       </form>
     </div>
   </div>

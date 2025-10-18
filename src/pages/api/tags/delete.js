@@ -33,59 +33,41 @@ export const POST = async ({ request, cookies }) => {
 
     // Récupérer les données
     const data = await request.json();
-    const { svgId, tagIds } = data;
+    const { tagId } = data;
 
-    if (!svgId) {
-      return new Response(JSON.stringify({ error: "SVG ID is required" }), {
+    if (!tagId) {
+      return new Response(JSON.stringify({ error: "Tag ID is required" }), {
         status: 400,
         headers: { "Content-Type": "application/json" },
       });
     }
 
-    // Vérifier que le SVG appartient à l'utilisateur
-    const svg = await pb.collection("svgs").getOne(svgId);
-    if (svg.user !== userId) {
+    // Vérifier que le tag appartient à l'utilisateur
+    const tag = await pb.collection("tags").getOne(tagId);
+    if (tag.user !== userId) {
       return new Response(
         JSON.stringify({
-          error: "Unauthorized: This SVG does not belong to you",
+          error: "Unauthorized: This tag does not belong to you",
         }),
         { status: 403, headers: { "Content-Type": "application/json" } }
       );
     }
 
-    // Si des tagIds sont fournis, vérifier qu'ils appartiennent à l'utilisateur
-    if (tagIds && Array.isArray(tagIds) && tagIds.length > 0) {
-      for (const tagId of tagIds) {
-        const tag = await pb.collection("tags").getOne(tagId);
-        if (tag.user !== userId) {
-          return new Response(
-            JSON.stringify({
-              error: "Unauthorized: One or more tags do not belong to you",
-            }),
-            { status: 403, headers: { "Content-Type": "application/json" } }
-          );
-        }
-      }
-    }
-
-    // Mettre à jour les tags (relation multiple)
-    const updatedSvg = await pb.collection("svgs").update(svgId, {
-      tags: tagIds || [],
-    });
+    // Supprimer le tag
+    await pb.collection("tags").delete(tagId);
 
     return new Response(
       JSON.stringify({
         success: true,
-        message: "Tags updated successfully",
-        svg: updatedSvg,
+        message: "Tag deleted successfully",
       }),
       { status: 200, headers: { "Content-Type": "application/json" } }
     );
   } catch (error) {
-    console.error("Tags update error:", error);
+    console.error("Tag deletion error:", error);
     return new Response(
       JSON.stringify({
-        error: "Failed to update tags",
+        error: "Failed to delete tag",
         details: error.message,
       }),
       { status: 500, headers: { "Content-Type": "application/json" } }

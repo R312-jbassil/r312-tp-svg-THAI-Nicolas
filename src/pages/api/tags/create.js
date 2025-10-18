@@ -33,59 +33,50 @@ export const POST = async ({ request, cookies }) => {
 
     // Récupérer les données
     const data = await request.json();
-    const { svgId, tagIds } = data;
+    const { name, color } = data;
 
-    if (!svgId) {
-      return new Response(JSON.stringify({ error: "SVG ID is required" }), {
+    if (!name || name.trim() === "") {
+      return new Response(JSON.stringify({ error: "Tag name is required" }), {
         status: 400,
         headers: { "Content-Type": "application/json" },
       });
     }
 
-    // Vérifier que le SVG appartient à l'utilisateur
-    const svg = await pb.collection("svgs").getOne(svgId);
-    if (svg.user !== userId) {
+    // Vérifier si le tag existe déjà pour cet utilisateur
+    const existingTags = await pb.collection("tags").getFullList({
+      filter: `user = "${userId}" && name = "${name.trim()}"`,
+    });
+
+    if (existingTags.length > 0) {
       return new Response(
         JSON.stringify({
-          error: "Unauthorized: This SVG does not belong to you",
+          error: "Tag already exists",
+          tag: existingTags[0],
         }),
-        { status: 403, headers: { "Content-Type": "application/json" } }
+        { status: 409, headers: { "Content-Type": "application/json" } }
       );
     }
 
-    // Si des tagIds sont fournis, vérifier qu'ils appartiennent à l'utilisateur
-    if (tagIds && Array.isArray(tagIds) && tagIds.length > 0) {
-      for (const tagId of tagIds) {
-        const tag = await pb.collection("tags").getOne(tagId);
-        if (tag.user !== userId) {
-          return new Response(
-            JSON.stringify({
-              error: "Unauthorized: One or more tags do not belong to you",
-            }),
-            { status: 403, headers: { "Content-Type": "application/json" } }
-          );
-        }
-      }
-    }
-
-    // Mettre à jour les tags (relation multiple)
-    const updatedSvg = await pb.collection("svgs").update(svgId, {
-      tags: tagIds || [],
+    // Créer le tag
+    const newTag = await pb.collection("tags").create({
+      name: name.trim(),
+      user: userId,
+      color: color || "#3B82F6", // Bleu par défaut
     });
 
     return new Response(
       JSON.stringify({
         success: true,
-        message: "Tags updated successfully",
-        svg: updatedSvg,
+        message: "Tag created successfully",
+        tag: newTag,
       }),
-      { status: 200, headers: { "Content-Type": "application/json" } }
+      { status: 201, headers: { "Content-Type": "application/json" } }
     );
   } catch (error) {
-    console.error("Tags update error:", error);
+    console.error("Tag creation error:", error);
     return new Response(
       JSON.stringify({
-        error: "Failed to update tags",
+        error: "Failed to create tag",
         details: error.message,
       }),
       { status: 500, headers: { "Content-Type": "application/json" } }
